@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @MappedSuperclass
 @Getter
@@ -12,7 +13,7 @@ import java.time.LocalDateTime;
 public abstract class BaseEntity {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@Column(name = "id", nullable = false, updatable = false)
 	private String id;
 
 	@Column(name= "createdAt" ,updatable = false, nullable = false)
@@ -23,6 +24,9 @@ public abstract class BaseEntity {
 
 	@PrePersist
 	protected void onCreate() {
+		if (this.id == null || this.id.isBlank()) {
+			this.id = UUID.randomUUID().toString();
+		}
 		LocalDateTime now = LocalDateTime.now();
 		this.createdAt = now;
 		this.updatedAt = now;

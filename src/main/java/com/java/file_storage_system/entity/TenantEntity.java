@@ -10,8 +10,8 @@ import java.math.BigInteger;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
-@Table(name = "tenants")
 @Entity
+@Table(name = "tenants")
 public class TenantEntity extends BaseEntity {
 
     @Column(name = "nameTenant", nullable = false, unique = true)
@@ -29,8 +29,10 @@ public class TenantEntity extends BaseEntity {
     @Column(name = "usedStorageSize", nullable = false)
     private BigInteger usedStorageSize;
 
-    @Column(name = "isActive", nullable = false, columnDefinition = "BOOLEAN DEFAULT TRUE")
-    private Boolean isActive;
+    @Column(name = "status", nullable = false,
+            comment = "0 = INACTIVE, 1 = ACTIVE, 2 = SUSPENDED, 3 = DELETED"
+    )
+    private Integer statusTenant;
 
 
 

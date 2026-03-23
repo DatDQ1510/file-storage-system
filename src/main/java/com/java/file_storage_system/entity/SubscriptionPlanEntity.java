@@ -1,16 +1,20 @@
 package com.java.file_storage_system.entity;
 
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import org.springframework.boot.jackson.autoconfigure.JacksonProperties.Json;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigInteger;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
+@Entity
 @Table(name = "subscriptionPlans")
 public class SubscriptionPlanEntity extends BaseEntity {
 
@@ -32,7 +36,8 @@ public class SubscriptionPlanEntity extends BaseEntity {
     @Column(name = "billingCycle", nullable = false, comment = "Billing cycle for the subscription plan")
     private String billingCycle; // e.g., "Monthly", "Yearly", "Quarterly"
 
-    @Column(name = "features", nullable = true, columnDefinition = "TEXT",
-            comment = "JSON string to store additional features and limits")
-    private Json features; // JSON string to store additional features and limits
+    @Column(name = "features", columnDefinition = "jsonb",
+            comment = "JSON object to store additional features and limits")
+    @JdbcTypeCode(SqlTypes.JSON)
+    private JsonNode features; // JSON object to store additional features and limits
 }
