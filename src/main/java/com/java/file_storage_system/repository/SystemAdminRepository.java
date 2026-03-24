@@ -5,4 +5,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface SystemAdminRepository extends BaseRepository<SystemAdminEntity> {
+
+	boolean existsByUsernameIgnoreCase(String username);
 }
