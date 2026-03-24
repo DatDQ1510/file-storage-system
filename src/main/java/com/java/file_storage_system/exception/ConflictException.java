@@ -4,12 +4,20 @@ import org.springframework.http.HttpStatus;
 
 public class ConflictException extends BaseException{
 
+    public ConflictException(String message) {
+        super(message, HttpStatus.CONFLICT, "CONFLICT");
+    }
+
     public ConflictException(String resourceName, String fieldName, Object fieldValue) {
 
-        super(
-                String.format("%s with %s '%s' already exists.", resourceName, fieldName, fieldValue),
-                HttpStatus.CONFLICT,
-                "CONFLICT"
-        );
+        this(String.format("%s with %s '%s' already exists.", resourceName, fieldName, fieldValue));
+    }
+
+    public static ConflictException alreadyExists(String resourceName, String fieldName, Object fieldValue) {
+        return new ConflictException(resourceName, fieldName, fieldValue);
+    }
+
+    public static ConflictException withMessage(String message) {
+        return new ConflictException(message);
     }
 }
