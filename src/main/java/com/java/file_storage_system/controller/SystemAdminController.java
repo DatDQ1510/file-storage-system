@@ -3,7 +3,6 @@ package com.java.file_storage_system.controller;
 import com.java.file_storage_system.dto.systemAdmin.create.CreateSystemAdminRequest;
 import com.java.file_storage_system.dto.systemAdmin.create.SystemAdminCreatedResponse;
 import com.java.file_storage_system.payload.ApiResponse;
-import com.java.file_storage_system.security.SystemAdminApiInterceptor;
 import com.java.file_storage_system.service.SystemAdminService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -44,11 +43,10 @@ public class SystemAdminController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<SystemAdminCreatedResponse>> createSystemAdmin(
-            @RequestHeader(SystemAdminApiInterceptor.SYSTEM_ADMIN_HEADER) String systemAdminId,
             @Valid @RequestBody CreateSystemAdminRequest request,
             HttpServletRequest httpServletRequest
     ) {
-        SystemAdminCreatedResponse created = systemAdminService.createSystemAdminBySystemAdmin(systemAdminId, request);
+        SystemAdminCreatedResponse created = systemAdminService.createSystemAdminBySystemAdmin(request);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)

@@ -28,5 +28,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
         registry.addInterceptor(systemAdminApiInterceptor)
             .addPathPatterns("/api/v1/system-admins/**")
             .excludePathPatterns("/api/v1/system-admins/bootstrap");
+
+        registry.addInterceptor(systemAdminApiInterceptor)
+            .addPathPatterns("/api/v1/tenant-admins/**");
     }
 }

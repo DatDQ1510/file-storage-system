@@ -38,15 +38,7 @@ public class SystemAdminServiceImpl extends BaseServiceImpl<SystemAdminEntity, S
 
     @Override
     @Transactional
-    public SystemAdminCreatedResponse createSystemAdminBySystemAdmin(String systemAdminId, CreateSystemAdminRequest request) {
-        if (systemAdminId == null || systemAdminId.isBlank()) {
-            throw new ForbiddenException("Missing X-System-Admin-Id header");
-        }
-
-        if (!repository.existsById(systemAdminId)) {
-            throw new ForbiddenException("Only SystemAdmin accounts can create another SystemAdmin");
-        }
-
+    public SystemAdminCreatedResponse createSystemAdminBySystemAdmin(CreateSystemAdminRequest request) {
         return createSystemAdminInternal(request);
     }
 

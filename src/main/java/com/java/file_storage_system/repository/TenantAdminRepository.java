@@ -6,4 +6,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface TenantAdminRepository extends BaseRepository<TenantAdminEntity> {
 
+	boolean existsByUserNameIgnoreCase(String userName);
+
+	boolean existsByEmailIgnoreCase(String email);
 }
