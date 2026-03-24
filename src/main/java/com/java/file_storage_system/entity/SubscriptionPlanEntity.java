@@ -3,14 +3,20 @@ package com.java.file_storage_system.entity;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.Column;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.util.ArrayList;
 import java.math.BigInteger;
+import java.util.List;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -40,4 +46,9 @@ public class SubscriptionPlanEntity extends BaseEntity {
             comment = "JSON object to store additional features and limits")
     @JdbcTypeCode(SqlTypes.JSON)
     private JsonNode features; // JSON object to store additional features and limits
+
+    @OneToMany(mappedBy = "plan", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private List<TenantPlan> tenantPlans = new ArrayList<>();
 }

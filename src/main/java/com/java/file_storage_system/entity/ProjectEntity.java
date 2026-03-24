@@ -1,10 +1,19 @@
 package com.java.file_storage_system.entity;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -12,13 +21,24 @@ import lombok.EqualsAndHashCode;
 @Table(name = "projects")
 public class ProjectEntity extends BaseEntity {
 
-    @Column(name = "tenantId", nullable = false)
-    private String tenantId;
-
     @Column(name = "name", nullable = false)
     private String nameProject;
 
-    @Column(name = "ownerId", nullable = false)
-    private String ownerId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tenantId", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private TenantEntity tenant;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ownerId", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private UserEntity owner;
+
+    @OneToMany(mappedBy = "project", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private List<FolderEntity> folders = new ArrayList<>();
 
 }

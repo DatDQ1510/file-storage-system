@@ -2,27 +2,27 @@ package com.java.file_storage_system.entity;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.Column;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Entity
 @Table(name = "files")
 public class FileEntity extends BaseEntity {
-
-    @Column(name = "tenantId", nullable = false)
-    private String tenantId;
-
-    @Column(name = "folderId", nullable = false, columnDefinition = "varchar(255) default '/'") // Default to root folder if not specified
-    private String folderId;
-
-    @Column(name = "ownerId", nullable = false)
-    private String ownerId;
 
     @Column(name = "nameFile", nullable = false)
     private String nameFile;
@@ -39,6 +39,32 @@ public class FileEntity extends BaseEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     private JsonNode ExtraInfo;
 
-    @Column(name = "lockedByUserId", nullable = true, comment = "User ID of the user who has locked the file for editing")
-    private String lockedByUserId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tenantId", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private TenantEntity tenant;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "folderId", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private FolderEntity folder;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ownerId", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private UserEntity owner;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "lockedByUserId")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private UserEntity lockedByUser;
+
+    @OneToMany(mappedBy = "file", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private List<FileVersionEntity> versions = new ArrayList<>();
 }
