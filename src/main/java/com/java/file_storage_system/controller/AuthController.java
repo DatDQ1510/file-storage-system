@@ -1,0 +1,110 @@
+package com.java.file_storage_system.controller;
+
+import com.java.file_storage_system.dto.auth.AuthTokenResponse;
+import com.java.file_storage_system.dto.auth.LoginRequest;
+import com.java.file_storage_system.exception.UnauthorizedException;
+import com.java.file_storage_system.payload.ApiResponse;
+import com.java.file_storage_system.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.time.Duration;
+
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/api/v1/auth")
+public class AuthController {
+
+    private final AuthService authService;
+
+    @Value("${app.security.refresh-cookie-name:refresh_token}")
+    private String refreshCookieName;
+
+    @Value("${app.security.jwt-refresh-expiration-ms:2592000000}")
+    private long refreshExpirationMs;
+
+    @Value("${app.security.refresh-cookie-secure:false}")
+    private boolean refreshCookieSecure;
+
+    @Value("${app.security.refresh-cookie-same-site:Lax}")
+    private String refreshCookieSameSite;
+
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponse<AuthTokenResponse>> login(
+            @Valid @RequestBody LoginRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        AuthService.AuthTokens tokens = authService.login(request);
+
+        ResponseCookie refreshCookie = buildRefreshCookie(tokens.refreshToken(), refreshExpirationMs);
+        AuthTokenResponse response = new AuthTokenResponse(
+                tokens.accessToken(),
+                "Bearer",
+                tokens.accessTokenExpiresInMs(),
+                tokens.role(),
+                tokens.tenantId()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                .body(ApiResponse.success("Login successfully", response, httpServletRequest.getRequestURI()));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<ApiResponse<AuthTokenResponse>> refresh(
+            @CookieValue(value = "${app.security.refresh-cookie-name:refresh_token}", required = false) String refreshToken,
+            HttpServletRequest httpServletRequest
+    ) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new UnauthorizedException("Missing refresh token cookie");
+        }
+
+        AuthService.AuthTokens tokens = authService.refresh(refreshToken);
+        ResponseCookie refreshCookie = buildRefreshCookie(tokens.refreshToken(), refreshExpirationMs);
+
+        AuthTokenResponse response = new AuthTokenResponse(
+                tokens.accessToken(),
+                "Bearer",
+                tokens.accessTokenExpiresInMs(),
+                tokens.role(),
+                tokens.tenantId()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                .body(ApiResponse.success("Refresh token successfully", response, httpServletRequest.getRequestURI()));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<String>> logout(HttpServletRequest httpServletRequest) {
+        ResponseCookie clearCookie = buildRefreshCookie("", 0L);
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
+                .body(ApiResponse.success("Logout successfully", httpServletRequest.getRequestURI()));
+    }
+
+    private ResponseCookie buildRefreshCookie(String value, long maxAgeMs) {
+        return ResponseCookie.from(refreshCookieName, value)
+                .httpOnly(true)
+                .secure(refreshCookieSecure)
+                .path("/api/v1/auth")
+                .maxAge(Duration.ofMillis(Math.max(maxAgeMs, 0L)))
+                .sameSite(refreshCookieSameSite)
+                .build();
+    }
+}

@@ -14,7 +14,7 @@ import lombok.EqualsAndHashCode;
 public class SystemAdminEntity extends BaseEntity {
 
     @Column(name = "userName", unique = true, nullable = false)
-    private String username;
+    private String userName;
 
     @JsonIgnore
     @Column(name = "hashPassword", nullable = false)

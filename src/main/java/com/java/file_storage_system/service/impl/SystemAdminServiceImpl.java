@@ -59,15 +59,15 @@ public class SystemAdminServiceImpl extends BaseServiceImpl<SystemAdminEntity, S
     private SystemAdminCreatedResponse createSystemAdminInternal(CreateSystemAdminRequest request) {
         String normalizedUserName = request.getUserName().trim().toLowerCase();
 
-        if (repository.existsByUsernameIgnoreCase(normalizedUserName)) {
+        if (repository.existsByUserNameIgnoreCase(normalizedUserName)) {
             throw new ConflictException("System admin username already exists: " + normalizedUserName);
         }
 
         SystemAdminEntity entity = new SystemAdminEntity();
-        entity.setUsername(normalizedUserName);
+        entity.setUserName(normalizedUserName);
         entity.setHashedPassword(passwordEncoder.encode(request.getPassword()));
 
         SystemAdminEntity saved = repository.save(entity);
-        return new SystemAdminCreatedResponse(saved.getId(), saved.getUsername());
+        return new SystemAdminCreatedResponse(saved.getId(), saved.getUserName());
     }
 }
