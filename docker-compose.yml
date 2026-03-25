@@ -31,7 +31,17 @@ services:
 #      resources:
 #        limits:
 #          memory: 1gb # Giới hạn cứng RAM cho RabbitMQ container
+  redis:
+    image: redis:7-alpine
+    container_name: redis_server
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
 
 volumes:
   postgres_data:
   rabbitmq_data:
+  redis_data:

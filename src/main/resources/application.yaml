@@ -37,6 +37,17 @@ spring:
     port: 5672
     username: admin
     password: admin123
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:
+      database: 0 # Default database
+      timeout: 60s
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
 
 app:
   security:
