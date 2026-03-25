@@ -36,6 +36,12 @@ public class ProjectEntity extends BaseEntity {
     @EqualsAndHashCode.Exclude
     private UserEntity owner;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tenantAdminId", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private TenantAdminEntity tenantAdmin ;
+
     @OneToMany(mappedBy = "project", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
