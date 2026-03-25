@@ -20,11 +20,23 @@ spring:
   threads:
     virtual:
       enabled: true
+  mail:
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
 
 app:
   security:
-    system-admin-bootstrap-secret: ${SYSTEM_ADMIN_BOOTSTRAP_SECRET:DatDQ225275}
-    jwt-secret: ${JWT_SECRET:y9Gb2ECXRGJ14GeyJfAUHM9F/N8fXkp/Qz3C17pqTc4=}
+    system-admin-bootstrap-secret: ${SYSTEM_ADMIN_BOOTSTRAP_SECRET:}
+    jwt-secret: ${JWT_SECRET:}
     jwt-access-expiration-ms: ${JWT_ACCESS_EXPIRATION_MS:900000}
     jwt-refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:2592000000}
     refresh-cookie-name: ${REFRESH_COOKIE_NAME:refresh_token}
