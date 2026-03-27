@@ -1,6 +1,7 @@
 package com.java.file_storage_system.service.impl;
 
 import com.java.file_storage_system.dto.project.ProjectRequest;
+import com.java.file_storage_system.dto.project.ProjectPageResponse;
 import com.java.file_storage_system.dto.project.ProjectResponse;
 import com.java.file_storage_system.entity.ProjectEntity;
 import com.java.file_storage_system.entity.TenantAdminEntity;
@@ -14,7 +15,11 @@ import com.java.file_storage_system.repository.UserRepository;
 import com.java.file_storage_system.service.ProjectService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Slf4j
 @Service
@@ -67,6 +72,38 @@ public class ProjectServiceImpl extends BaseServiceImpl<ProjectEntity, ProjectRe
         return mapToResponse(project);
     }
 
+    @Override
+    public ProjectPageResponse getAllProjectsByTenantAdmin(String tenantAdminId, int page, int size) {
+        getTenantAdmin(tenantAdminId);
+
+        int normalizedPage = Math.max(0, page);
+        int normalizedSize = Math.max(1, Math.min(size, 100));
+
+        Page<ProjectEntity> projectPage = repository.findAllByTenantAdminId(
+                tenantAdminId,
+                PageRequest.of(normalizedPage, normalizedSize)
+        );
+
+        return mapToPageResponse(projectPage);
+    }
+
+    @Override
+    public ProjectPageResponse searchProjectsByTenantAdmin(String tenantAdminId, String keyword, int page, int size) {
+        getTenantAdmin(tenantAdminId);
+
+        int normalizedPage = Math.max(0, page);
+        int normalizedSize = Math.max(1, Math.min(size, 100));
+        String normalizedKeyword = normalizeKeyword(keyword);
+
+        Page<ProjectEntity> projectPage = repository.searchByTenantAdminIdAndKeyword(
+                tenantAdminId,
+                normalizedKeyword,
+                PageRequest.of(normalizedPage, normalizedSize)
+        );
+
+        return mapToPageResponse(projectPage);
+    }
+
     private TenantAdminEntity getTenantAdmin(String tenantAdminId) {
         return tenantAdminRepository.findById(tenantAdminId)
                 .orElseThrow(() -> new ResourceNotFoundException("TenantAdmin không tồn tại"));
@@ -91,5 +128,31 @@ public class ProjectServiceImpl extends BaseServiceImpl<ProjectEntity, ProjectRe
                 .createdAt(project.getCreatedAt())
                 .updatedAt(project.getUpdatedAt())
                 .build();
+    }
+
+    private ProjectPageResponse mapToPageResponse(Page<ProjectEntity> projectPage) {
+        List<ProjectResponse> items = projectPage.getContent()
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+
+        return new ProjectPageResponse(
+                items,
+                projectPage.getNumber(),
+                projectPage.getSize(),
+                projectPage.getTotalElements(),
+                projectPage.getTotalPages(),
+                projectPage.hasNext(),
+                projectPage.hasPrevious()
+        );
+    }
+
+    private String normalizeKeyword(String keyword) {
+        if (keyword == null) {
+            return null;
+        }
+
+        String trimmed = keyword.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

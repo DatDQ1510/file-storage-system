@@ -52,11 +52,9 @@ public class AuthServiceImpl implements AuthService {
     private final RedisTemplate<Object, Object> redisTemplate;
     private final JavaMailSender mailSender;
 
-    @Value("${app.security.forgot-password.code-ttl-minutes3}")
-    private long forgotPasswordCodeTtlMinutes;
+    private static final int forgotPasswordCodeTtlMinutes = 3;
 
-    @Value("${app.security.forgot-password.marker-ttl-minutes:5}")
-    private long forgotPasswordMarkerTtlMinutes;
+    private static final int forgotPasswordMarkerTtlMinutes = 3;
 
     @Value("${spring.mail.username:}")
     private String mailFromAddress;
@@ -123,8 +121,8 @@ public class AuthServiceImpl implements AuthService {
         String codeKey = getForgotPasswordCodeKey(normalizedEmail);
         String markerKey = getForgotPasswordMarkerKey(normalizedEmail);
 
-        redisTemplate.opsForValue().set(codeKey, code, Duration.ofMinutes(Math.max(3, forgotPasswordCodeTtlMinutes))); // thời hạn của digital code
-        redisTemplate.opsForValue().set(markerKey, "1", Duration.ofMinutes(Math.max(5, forgotPasswordMarkerTtlMinutes))); // đánh dấu đã gửi email
+        redisTemplate.opsForValue().set(codeKey, code, Duration.ofMinutes(forgotPasswordCodeTtlMinutes)); // thời hạn của digital code
+        redisTemplate.opsForValue().set(markerKey, "1", Duration.ofMinutes(forgotPasswordMarkerTtlMinutes)); // đánh dấu đã gửi email
 
         sendForgotPasswordMail(user.getEmail(), code);
     }
