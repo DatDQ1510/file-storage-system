@@ -1,7 +1,9 @@
 package com.java.file_storage_system.controller;
 
+import com.java.file_storage_system.custom.CustomUserDetails;
 import com.java.file_storage_system.dto.auth.AuthTokenResponse;
 import com.java.file_storage_system.dto.auth.LoginRequest;
+import com.java.file_storage_system.dto.user.changePassword.ChangePasswordRequest;
 import com.java.file_storage_system.exception.UnauthorizedException;
 import com.java.file_storage_system.payload.ApiResponse;
 import com.java.file_storage_system.service.AuthService;
@@ -13,7 +15,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -96,6 +100,20 @@ public class AuthController {
                 .status(HttpStatus.OK)
                 .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
                 .body(ApiResponse.success("Logout successfully", httpServletRequest.getRequestURI()));
+    }
+
+    @PatchMapping("/change-password")
+    public ResponseEntity<ApiResponse<String>> changePassword(
+            Authentication authentication,
+            @Valid @RequestBody ChangePasswordRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        CustomUserDetails principal = (CustomUserDetails) authentication.getPrincipal();
+        authService.changePassword(principal, request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success("Change password successfully", httpServletRequest.getRequestURI())
+        );
     }
 
     private ResponseCookie buildRefreshCookie(String value, long maxAgeMs) {
