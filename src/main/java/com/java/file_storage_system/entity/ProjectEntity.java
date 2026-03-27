@@ -47,4 +47,9 @@ public class ProjectEntity extends BaseEntity {
     @EqualsAndHashCode.Exclude
     private List<FolderEntity> folders = new ArrayList<>();
 
+    @OneToMany(mappedBy = "project", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private List<UserProjectEntity> userProjects = new ArrayList<>();
+
 }

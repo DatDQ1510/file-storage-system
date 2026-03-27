@@ -56,4 +56,14 @@ public class UserEntity extends BaseEntity {
     @EqualsAndHashCode.Exclude
     private List<FileEntity> lockedFiles = new ArrayList<>();
 
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private List<UserProjectEntity> projectMemberships = new ArrayList<>();
+
+    @OneToMany(mappedBy = "grantedByUser", fetch = FetchType.LAZY)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private List<UserProjectEntity> grantedProjectPermissions = new ArrayList<>();
+
 }

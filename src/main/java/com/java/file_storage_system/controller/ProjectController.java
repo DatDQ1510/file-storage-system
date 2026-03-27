@@ -4,6 +4,8 @@ import com.java.file_storage_system.context.UserContext;
 import com.java.file_storage_system.dto.project.ProjectPageResponse;
 import com.java.file_storage_system.dto.project.ProjectRequest;
 import com.java.file_storage_system.dto.project.ProjectResponse;
+import com.java.file_storage_system.dto.project.member.AddProjectMemberRequest;
+import com.java.file_storage_system.dto.project.member.ProjectMemberResponse;
 import com.java.file_storage_system.service.ProjectService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -78,5 +81,21 @@ public class ProjectController {
 
         ProjectPageResponse response = projectService.searchProjectsByTenantAdmin(userContext.getId(), keyword, page, size);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{projectId}/members")
+    public ResponseEntity<ProjectMemberResponse> addUserToProject(
+            @PathVariable("projectId") String projectId,
+            @Valid @RequestBody AddProjectMemberRequest request
+    ) {
+        ProjectMemberResponse response = projectService.addUserToProject(
+                projectId,
+                request,
+                userContext.getId(),
+                userContext.getRole(),
+                userContext.getTenantId()
+        );
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }

@@ -3,6 +3,8 @@ package com.java.file_storage_system.service;
 import com.java.file_storage_system.dto.project.ProjectRequest;
 import com.java.file_storage_system.dto.project.ProjectPageResponse;
 import com.java.file_storage_system.dto.project.ProjectResponse;
+import com.java.file_storage_system.dto.project.member.AddProjectMemberRequest;
+import com.java.file_storage_system.dto.project.member.ProjectMemberResponse;
 import com.java.file_storage_system.entity.ProjectEntity;
 
 public interface ProjectService extends BaseService<ProjectEntity> {
@@ -33,4 +35,12 @@ public interface ProjectService extends BaseService<ProjectEntity> {
     ProjectPageResponse getAllProjectsByTenantAdmin(String tenantAdminId, int page, int size);
 
     ProjectPageResponse searchProjectsByTenantAdmin(String tenantAdminId, String keyword, int page, int size);
+
+    ProjectMemberResponse addUserToProject(
+            String projectId,
+            AddProjectMemberRequest request,
+            String actorId,
+            String actorRole,
+            String actorTenantId
+    );
 }
