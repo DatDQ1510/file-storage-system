@@ -2,6 +2,8 @@ package com.java.file_storage_system.service.impl;
 
 import com.java.file_storage_system.dto.user.createUser.CreateTenantUserRequest;
 import com.java.file_storage_system.dto.user.createUser.UserCreatedResponse;
+import com.java.file_storage_system.dto.user.searchUser.UserSearchItemResponse;
+import com.java.file_storage_system.dto.user.searchUser.UserSearchPageResponse;
 import com.java.file_storage_system.entity.SubscriptionPlanEntity;
 import com.java.file_storage_system.entity.TenantAdminEntity;
 import com.java.file_storage_system.entity.TenantEntity;
@@ -14,9 +16,13 @@ import com.java.file_storage_system.repository.TenantPlanRepository;
 import com.java.file_storage_system.repository.UserRepository;
 import com.java.file_storage_system.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -39,6 +45,35 @@ public class UserServiceImpl extends BaseServiceImpl<UserEntity, UserRepository>
         UserEntity savedUser = repository.save(userToCreate); // Save the new user to the database
         return mapCreatedUser(savedUser);
     }
+
+        @Override
+        @Transactional(readOnly = true)
+        public UserSearchPageResponse searchUsersInTenant(String tenantId, String keyword, int page, int size) {
+        int normalizedPage = Math.max(page, 0);
+        int normalizedSize = Math.max(1, Math.min(size, 100));
+        String normalizedKeyword = normalizeKeyword(keyword);
+
+        Page<UserEntity> userPage = repository.searchByTenantIdAndKeyword(
+            tenantId,
+            normalizedKeyword,
+            PageRequest.of(normalizedPage, normalizedSize)
+        );
+
+        List<UserSearchItemResponse> items = userPage.getContent()
+            .stream()
+            .map(user -> new UserSearchItemResponse(user.getId(), user.getUserName(), user.getEmail()))
+            .toList();
+
+        return new UserSearchPageResponse(
+            items,
+            userPage.getNumber(),
+            userPage.getSize(),
+            userPage.getTotalElements(),
+            userPage.getTotalPages(),
+            userPage.hasNext(),
+            userPage.hasPrevious()
+        );
+        }
 
     private TenantAdminEntity findTenantAdminOrThrow(String tenantAdminId) {
         return tenantAdminRepository.findById(tenantAdminId)
@@ -93,5 +128,14 @@ public class UserServiceImpl extends BaseServiceImpl<UserEntity, UserRepository>
                 savedUser.getEmail(),
                 savedUser.getTenant().getId()
         );
+    }
+
+    private String normalizeKeyword(String keyword) {
+        if (keyword == null) {
+            return null;
+        }
+
+        String trimmed = keyword.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

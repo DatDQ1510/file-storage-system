@@ -2,6 +2,7 @@ package com.java.file_storage_system.controller;
 
 import com.java.file_storage_system.dto.user.createUser.CreateTenantUserRequest;
 import com.java.file_storage_system.dto.user.createUser.UserCreatedResponse;
+import com.java.file_storage_system.dto.user.searchUser.UserSearchPageResponse;
 import com.java.file_storage_system.payload.ApiResponse;
 import com.java.file_storage_system.service.UserService;
 import com.java.file_storage_system.custom.CustomUserDetails;
@@ -11,8 +12,10 @@ import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -41,5 +44,29 @@ public class UserController {
 						createdUser,
 						httpServletRequest.getRequestURI()
 				));
+	}
+
+	@GetMapping("/search")
+	public ResponseEntity<ApiResponse<UserSearchPageResponse>> searchUsersInTenant(
+			Authentication authentication,
+			@RequestParam(value = "keyword", required = false) String keyword,
+			@RequestParam(value = "page", defaultValue = "0") int page,
+			@RequestParam(value = "size", defaultValue = "10") int size,
+			HttpServletRequest httpServletRequest
+	) {
+		CustomUserDetails principal = (CustomUserDetails) authentication.getPrincipal();
+		String tenantId = principal.getTenantId();
+
+		if (tenantId == null || tenantId.isBlank()) {
+			return ResponseEntity
+					.status(HttpStatus.FORBIDDEN)
+					.body(ApiResponse.error("Tenant scope is required for user search", httpServletRequest.getRequestURI()));
+		}
+
+		UserSearchPageResponse users = userService.searchUsersInTenant(tenantId, keyword, page, size);
+
+		return ResponseEntity.ok(
+				ApiResponse.success("Search users successfully", users, httpServletRequest.getRequestURI())
+		);
 	}
 }
