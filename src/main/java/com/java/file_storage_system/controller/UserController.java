@@ -2,6 +2,7 @@ package com.java.file_storage_system.controller;
 
 import com.java.file_storage_system.dto.user.createUser.CreateTenantUserRequest;
 import com.java.file_storage_system.dto.user.createUser.UserCreatedResponse;
+import com.java.file_storage_system.dto.user.changePassword.ResetUserPasswordByTenantAdminRequest;
 import com.java.file_storage_system.dto.user.searchUser.UserSearchPageResponse;
 import com.java.file_storage_system.payload.ApiResponse;
 import com.java.file_storage_system.service.UserService;
@@ -13,6 +14,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -44,6 +47,23 @@ public class UserController {
 						createdUser,
 						httpServletRequest.getRequestURI()
 				));
+	}
+
+	@PatchMapping("/tenant-admin/{userId}/password")
+	public ResponseEntity<ApiResponse<String>> resetUserPasswordByTenantAdmin(
+			Authentication authentication,
+			@PathVariable("userId") String userId,
+			@Valid @RequestBody ResetUserPasswordByTenantAdminRequest request,
+			HttpServletRequest httpServletRequest
+	) {
+		CustomUserDetails principal = (CustomUserDetails) authentication.getPrincipal();
+		String tenantAdminId = principal.getId();
+
+		userService.resetUserPasswordByTenantAdmin(tenantAdminId, userId, request);
+
+		return ResponseEntity.ok(
+				ApiResponse.success("Reset user password successfully", httpServletRequest.getRequestURI())
+		);
 	}
 
 	@GetMapping("/search")

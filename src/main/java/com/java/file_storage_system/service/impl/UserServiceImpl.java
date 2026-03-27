@@ -2,6 +2,7 @@ package com.java.file_storage_system.service.impl;
 
 import com.java.file_storage_system.dto.user.createUser.CreateTenantUserRequest;
 import com.java.file_storage_system.dto.user.createUser.UserCreatedResponse;
+import com.java.file_storage_system.dto.user.changePassword.ResetUserPasswordByTenantAdminRequest;
 import com.java.file_storage_system.dto.user.searchUser.UserSearchItemResponse;
 import com.java.file_storage_system.dto.user.searchUser.UserSearchPageResponse;
 import com.java.file_storage_system.entity.SubscriptionPlanEntity;
@@ -10,6 +11,7 @@ import com.java.file_storage_system.entity.TenantEntity;
 import com.java.file_storage_system.entity.TenantPlan;
 import com.java.file_storage_system.entity.UserEntity;
 import com.java.file_storage_system.exception.ConflictException;
+import com.java.file_storage_system.exception.ForbiddenException;
 import com.java.file_storage_system.exception.ResourceNotFoundException;
 import com.java.file_storage_system.repository.TenantAdminRepository;
 import com.java.file_storage_system.repository.TenantPlanRepository;
@@ -44,6 +46,21 @@ public class UserServiceImpl extends BaseServiceImpl<UserEntity, UserRepository>
         UserEntity userToCreate = buildUserEntity(request, tenant); // Build the UserEntity from the request and tenant information
         UserEntity savedUser = repository.save(userToCreate); // Save the new user to the database
         return mapCreatedUser(savedUser);
+    }
+
+    @Override
+    @Transactional
+    public void resetUserPasswordByTenantAdmin(String tenantAdminId, String userId, ResetUserPasswordByTenantAdminRequest request) {
+        TenantAdminEntity tenantAdmin = findTenantAdminOrThrow(tenantAdminId);
+        UserEntity user = repository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+
+        if (!tenantAdmin.getTenant().getId().equals(user.getTenant().getId())) {
+            throw new ForbiddenException("Tenant admin cannot reset password of user outside tenant");
+        }
+
+        user.setHashedPassword(passwordEncoder.encode(request.newPassword()));
+        repository.save(user);
     }
 
         @Override

@@ -2,6 +2,9 @@ package com.java.file_storage_system.controller;
 
 import com.java.file_storage_system.custom.CustomUserDetails;
 import com.java.file_storage_system.dto.auth.AuthTokenResponse;
+import com.java.file_storage_system.dto.auth.ForgotPasswordResetRequest;
+import com.java.file_storage_system.dto.auth.ForgotPasswordSendCodeRequest;
+import com.java.file_storage_system.dto.auth.ForgotPasswordVerifyCodeRequest;
 import com.java.file_storage_system.dto.auth.LoginRequest;
 import com.java.file_storage_system.dto.user.changePassword.ChangePasswordRequest;
 import com.java.file_storage_system.exception.UnauthorizedException;
@@ -113,6 +116,39 @@ public class AuthController {
 
         return ResponseEntity.ok(
                 ApiResponse.success("Change password successfully", httpServletRequest.getRequestURI())
+        );
+    }
+
+    @PostMapping("/forgot-password/send-code")
+    public ResponseEntity<ApiResponse<String>> sendForgotPasswordCode(
+            @Valid @RequestBody ForgotPasswordSendCodeRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        authService.sendForgotPasswordCode(request);
+        return ResponseEntity.ok(
+                ApiResponse.success("Verification code sent successfully", httpServletRequest.getRequestURI())
+        );
+    }
+
+    @PostMapping("/forgot-password/verify-code")
+    public ResponseEntity<ApiResponse<String>> verifyForgotPasswordCode(
+            @Valid @RequestBody ForgotPasswordVerifyCodeRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        authService.verifyForgotPasswordCode(request);
+        return ResponseEntity.ok(
+                ApiResponse.success("Verification code is valid", httpServletRequest.getRequestURI())
+        );
+    }
+
+    @PatchMapping("/forgot-password/reset")
+    public ResponseEntity<ApiResponse<String>> resetForgotPassword(
+            @Valid @RequestBody ForgotPasswordResetRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        authService.resetForgotPassword(request);
+        return ResponseEntity.ok(
+                ApiResponse.success("Reset password successfully", httpServletRequest.getRequestURI())
         );
     }
 

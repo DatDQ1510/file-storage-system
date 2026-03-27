@@ -3,6 +3,9 @@ package com.java.file_storage_system.service.impl;
 import com.java.file_storage_system.custom.CustomUserDetails;
 import com.java.file_storage_system.custom.CustomUserDetailsService;
 import com.java.file_storage_system.custom.JwtTokenProvider;
+import com.java.file_storage_system.dto.auth.ForgotPasswordSendCodeRequest;
+import com.java.file_storage_system.dto.auth.ForgotPasswordVerifyCodeRequest;
+import com.java.file_storage_system.dto.auth.ForgotPasswordResetRequest;
 import com.java.file_storage_system.dto.auth.LoginRequest;
 import com.java.file_storage_system.dto.user.changePassword.ChangePasswordRequest;
 import com.java.file_storage_system.entity.SystemAdminEntity;
@@ -16,6 +19,10 @@ import com.java.file_storage_system.repository.TenantAdminRepository;
 import com.java.file_storage_system.repository.UserRepository;
 import com.java.file_storage_system.service.AuthService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -24,9 +31,16 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.util.Locale;
+import java.util.concurrent.ThreadLocalRandom;
+
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
+
+    private static final String FORGOT_PASSWORD_CODE_PREFIX = "auth:forgot-password:code:";
+    private static final String FORGOT_PASSWORD_MARKER_PREFIX = "auth:forgot-password:marker:";
 
     private final AuthenticationManager authenticationManager;
     private final CustomUserDetailsService customUserDetailsService;
@@ -35,6 +49,17 @@ public class AuthServiceImpl implements AuthService {
     private final SystemAdminRepository systemAdminRepository;
     private final TenantAdminRepository tenantAdminRepository;
     private final UserRepository userRepository;
+    private final RedisTemplate<Object, Object> redisTemplate;
+    private final JavaMailSender mailSender;
+
+    @Value("${app.security.forgot-password.code-ttl-minutes3}")
+    private long forgotPasswordCodeTtlMinutes;
+
+    @Value("${app.security.forgot-password.marker-ttl-minutes:5}")
+    private long forgotPasswordMarkerTtlMinutes;
+
+    @Value("${spring.mail.username:}")
+    private String mailFromAddress;
 
     @Override
     public AuthTokens login(LoginRequest request) {
@@ -86,6 +111,61 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
+    @Override
+    @Transactional
+    public void sendForgotPasswordCode(ForgotPasswordSendCodeRequest request) {
+        String normalizedEmail = normalizeEmail(request.email());
+
+        UserEntity user = userRepository.findByEmailIgnoreCase(normalizedEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Email not found"));
+
+        String code = generate6DigitCode();
+        String codeKey = getForgotPasswordCodeKey(normalizedEmail);
+        String markerKey = getForgotPasswordMarkerKey(normalizedEmail);
+
+        redisTemplate.opsForValue().set(codeKey, code, Duration.ofMinutes(Math.max(3, forgotPasswordCodeTtlMinutes))); // thời hạn của digital code
+        redisTemplate.opsForValue().set(markerKey, "1", Duration.ofMinutes(Math.max(5, forgotPasswordMarkerTtlMinutes))); // đánh dấu đã gửi email
+
+        sendForgotPasswordMail(user.getEmail(), code);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void verifyForgotPasswordCode(ForgotPasswordVerifyCodeRequest request) {
+        String normalizedEmail = normalizeEmail(request.email());
+        String codeKey = getForgotPasswordCodeKey(normalizedEmail);
+        String markerKey = getForgotPasswordMarkerKey(normalizedEmail);
+
+        Object storedCode = redisTemplate.opsForValue().get(codeKey);
+        if (storedCode == null) {
+            Boolean hasMarker = redisTemplate.hasKey(markerKey);
+            if (Boolean.TRUE.equals(hasMarker)) {
+                throw new UnauthorizedException("Verification code has expired");
+            }
+            throw new ResourceNotFoundException("Verification code not found");
+        }
+
+        if (!request.code().equals(storedCode.toString())) {
+            throw new UnauthorizedException("Verification code is invalid");
+        }
+    }
+
+    @Override
+    @Transactional
+    public void resetForgotPassword(ForgotPasswordResetRequest request) {
+        verifyForgotPasswordCode(new ForgotPasswordVerifyCodeRequest(request.email(), request.code()));
+
+        String normalizedEmail = normalizeEmail(request.email());
+        UserEntity user = userRepository.findByEmailIgnoreCase(normalizedEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Email not found"));
+
+        user.setHashedPassword(passwordEncoder.encode(request.newPassword()));
+        userRepository.save(user);
+
+        redisTemplate.delete(getForgotPasswordCodeKey(normalizedEmail));
+        redisTemplate.delete(getForgotPasswordMarkerKey(normalizedEmail));
+    }
+
     private AuthTokens issueTokens(CustomUserDetails principal) {
         String accessToken = jwtTokenProvider.generateAccessToken(principal);
         String newRefreshToken = jwtTokenProvider.generateRefreshToken(principal);
@@ -130,5 +210,33 @@ public class AuthServiceImpl implements AuthService {
         if (!passwordEncoder.matches(oldPassword, storedHash)) {
             throw new UnauthorizedException("Old password is incorrect");
         }
+    }
+
+    private String normalizeEmail(String email) {
+        return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String generate6DigitCode() {
+        int value = ThreadLocalRandom.current().nextInt(0, 1_000_000);
+        return String.format("%06d", value);
+    }
+
+    private String getForgotPasswordCodeKey(String normalizedEmail) {
+        return FORGOT_PASSWORD_CODE_PREFIX + normalizedEmail;
+    }
+
+    private String getForgotPasswordMarkerKey(String normalizedEmail) {
+        return FORGOT_PASSWORD_MARKER_PREFIX + normalizedEmail;
+    }
+
+    private void sendForgotPasswordMail(String toEmail, String code) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        if (mailFromAddress != null && !mailFromAddress.isBlank()) {
+            message.setFrom(mailFromAddress);
+        }
+        message.setTo(toEmail);
+        message.setSubject("Password Reset Verification Code");
+        message.setText("Your password reset code is: " + code + "\nThis code will expire in 2 minutes.");
+        mailSender.send(message);
     }
 }
