@@ -1,5 +1,6 @@
 package com.java.file_storage_system.service.impl;
 
+import com.java.file_storage_system.constant.TenantPlanStatus;
 import com.java.file_storage_system.dto.user.createUser.CreateTenantUserRequest;
 import com.java.file_storage_system.dto.user.createUser.UserCreatedResponse;
 import com.java.file_storage_system.dto.user.changePassword.ResetUserPasswordByTenantAdminRequest;
@@ -114,7 +115,7 @@ public class UserServiceImpl extends BaseServiceImpl<UserEntity, UserRepository>
     }
 
     private TenantPlan findTenantPlanOrThrow(String tenantId) {
-        return tenantPlanRepository.findLatestByTenantIdAndStatus(tenantId, "ACTIVE")
+        return tenantPlanRepository.findLatestByTenantIdAndStatus(tenantId, TenantPlanStatus.ACTIVE)
             .or(() -> tenantPlanRepository.findLatestByTenantId(tenantId))
                 .orElseThrow(() -> new ResourceNotFoundException("Tenant plan not found for tenant: " + tenantId));
     }

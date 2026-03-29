@@ -1,8 +1,11 @@
 package com.java.file_storage_system.entity;
 
+import com.java.file_storage_system.constant.TenantStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
@@ -35,10 +38,11 @@ public class TenantEntity extends BaseEntity {
     @Column(name = "usedStorageSize", nullable = false)
     private BigInteger usedStorageSize;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false,
-            comment = "0 = INACTIVE, 1 = ACTIVE, 2 = SUSPENDED, 3 = DELETED"
+            comment = "INACTIVE, ACTIVE, SUSPENDED, DELETED"
     )
-    private Integer statusTenant;
+    private TenantStatus statusTenant;
 
         @OneToMany(mappedBy = "tenant", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
         @ToString.Exclude

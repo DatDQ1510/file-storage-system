@@ -5,4 +5,12 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface TenantRepository extends BaseRepository<TenantEntity> {
+
+	boolean existsByNameTenant(String nameTenant);
+
+	boolean existsByDomainTenant(String domainTenant);
+
+	boolean existsByNameTenantAndIdNot(String nameTenant, String id);
+
+	boolean existsByDomainTenantAndIdNot(String domainTenant, String id);
 }

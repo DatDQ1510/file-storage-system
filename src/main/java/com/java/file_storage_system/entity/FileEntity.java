@@ -1,9 +1,12 @@
 package com.java.file_storage_system.entity;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.java.file_storage_system.constant.FileStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -27,10 +30,11 @@ public class FileEntity extends BaseEntity {
     @Column(name = "nameFile", nullable = false)
     private String nameFile;
 
-    @Column(name = "status", nullable = false,
-            comment = "0 = DRAFT, 1 = PENDING_REVIEW, 2 = APPROVED, 3 = REJECTED, 4 = DELETED"
-    )
-    private Integer statusFile;
+        @Enumerated(EnumType.STRING)
+        @Column(name = "status", nullable = false,
+            comment = "DRAFT, PENDING_REVIEW, APPROVED, REJECTED, DELETED"
+        )
+        private FileStatus statusFile;
 
     @Column(name = "sizeFile", nullable = false, comment = "Size of the file in MB")
     private Double sizeFile; // in MB

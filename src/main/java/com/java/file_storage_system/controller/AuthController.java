@@ -111,7 +111,7 @@ public class AuthController {
             @Valid @RequestBody ChangePasswordRequest request,
             HttpServletRequest httpServletRequest
     ) {
-        CustomUserDetails principal = (CustomUserDetails) authentication.getPrincipal();
+        CustomUserDetails principal = extractPrincipal(authentication);
         authService.changePassword(principal, request);
 
         return ResponseEntity.ok(
@@ -151,6 +151,13 @@ public class AuthController {
                 ApiResponse.success("Reset password successfully", httpServletRequest.getRequestURI())
         );
     }
+
+        private CustomUserDetails extractPrincipal(Authentication authentication) {
+                if (authentication == null || !(authentication.getPrincipal() instanceof CustomUserDetails principal)) {
+                        throw new UnauthorizedException("Invalid authentication principal");
+                }
+                return principal;
+        }
 
     private ResponseCookie buildRefreshCookie(String value, long maxAgeMs) {
         return ResponseCookie.from(refreshCookieName, value)

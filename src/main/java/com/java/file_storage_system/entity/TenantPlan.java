@@ -1,7 +1,10 @@
 package com.java.file_storage_system.entity;
 
+import com.java.file_storage_system.constant.TenantPlanStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -19,8 +22,9 @@ import java.time.LocalDateTime;
 )
 public class TenantPlan extends BaseEntity {
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status")
-    private String status;
+    private TenantPlanStatus status;
 
     @Column(name = "planStartDate")
     private LocalDateTime planStartDate;

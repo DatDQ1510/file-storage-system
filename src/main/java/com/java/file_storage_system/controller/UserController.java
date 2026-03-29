@@ -4,6 +4,7 @@ import com.java.file_storage_system.dto.user.createUser.CreateTenantUserRequest;
 import com.java.file_storage_system.dto.user.createUser.UserCreatedResponse;
 import com.java.file_storage_system.dto.user.changePassword.ResetUserPasswordByTenantAdminRequest;
 import com.java.file_storage_system.dto.user.searchUser.UserSearchPageResponse;
+import com.java.file_storage_system.exception.UnauthorizedException;
 import com.java.file_storage_system.payload.ApiResponse;
 import com.java.file_storage_system.service.UserService;
 import com.java.file_storage_system.custom.CustomUserDetails;
@@ -36,7 +37,7 @@ public class UserController {
 			@Valid @RequestBody CreateTenantUserRequest request,
 			HttpServletRequest httpServletRequest
 	) {
-		CustomUserDetails principal = (CustomUserDetails) authentication.getPrincipal();
+		CustomUserDetails principal = extractPrincipal(authentication);
 		String tenantAdminId = principal.getId();
 		UserCreatedResponse createdUser = userService.createUserByTenantAdmin(tenantAdminId, request);
 
@@ -56,7 +57,7 @@ public class UserController {
 			@Valid @RequestBody ResetUserPasswordByTenantAdminRequest request,
 			HttpServletRequest httpServletRequest
 	) {
-		CustomUserDetails principal = (CustomUserDetails) authentication.getPrincipal();
+		CustomUserDetails principal = extractPrincipal(authentication);
 		String tenantAdminId = principal.getId();
 
 		userService.resetUserPasswordByTenantAdmin(tenantAdminId, userId, request);
@@ -74,7 +75,7 @@ public class UserController {
 			@RequestParam(value = "size", defaultValue = "10") int size,
 			HttpServletRequest httpServletRequest
 	) {
-		CustomUserDetails principal = (CustomUserDetails) authentication.getPrincipal();
+		CustomUserDetails principal = extractPrincipal(authentication);
 		String tenantId = principal.getTenantId();
 
 		if (tenantId == null || tenantId.isBlank()) {
@@ -88,5 +89,12 @@ public class UserController {
 		return ResponseEntity.ok(
 				ApiResponse.success("Search users successfully", users, httpServletRequest.getRequestURI())
 		);
+	}
+
+	private CustomUserDetails extractPrincipal(Authentication authentication) {
+		if (authentication == null || !(authentication.getPrincipal() instanceof CustomUserDetails principal)) {
+			throw new UnauthorizedException("Invalid authentication principal");
+		}
+		return principal;
 	}
 }

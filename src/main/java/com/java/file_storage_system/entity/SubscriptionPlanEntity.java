@@ -2,9 +2,12 @@ package com.java.file_storage_system.entity;
 
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.java.file_storage_system.constant.BillingCycle;
 import jakarta.persistence.Column;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
@@ -39,8 +42,9 @@ public class SubscriptionPlanEntity extends BaseEntity {
     @Column(name = "price", nullable = false, comment = "Price of the subscription plan in USD")
     private Double price; // in USD
 
-    @Column(name = "billingCycle", nullable = false, comment = "Billing cycle for the subscription plan")
-    private String billingCycle; // e.g., "Monthly", "Yearly", "Quarterly"
+    @Enumerated(EnumType.STRING)
+    @Column(name = "billingCycle", nullable = false, comment = "MONTHLY, QUARTERLY, YEARLY")
+    private BillingCycle billingCycle;
 
     @Column(name = "features", columnDefinition = "jsonb",
             comment = "JSON object to store additional features and limits")

@@ -1,5 +1,6 @@
 package com.java.file_storage_system.repository;
 
+import com.java.file_storage_system.constant.TenantPlanStatus;
 import com.java.file_storage_system.entity.TenantPlan;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -15,7 +16,7 @@ public interface TenantPlanRepository extends BaseRepository<TenantPlan> {
 		where tp.tenant.id = :tenantId and tp.status = :status
 		order by tp.createdAt desc
 	""")
-	Optional<TenantPlan> findLatestByTenantIdAndStatus(@Param("tenantId") String tenantId, @Param("status") String status);
+	Optional<TenantPlan> findLatestByTenantIdAndStatus(@Param("tenantId") String tenantId, @Param("status") TenantPlanStatus status);
 
 	@Query("""
 		select tp from TenantPlan tp
