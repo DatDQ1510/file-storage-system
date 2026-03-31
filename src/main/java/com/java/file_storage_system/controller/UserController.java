@@ -4,12 +4,15 @@ import com.java.file_storage_system.dto.user.createUser.CreateTenantUserRequest;
 import com.java.file_storage_system.dto.user.createUser.UserCreatedResponse;
 import com.java.file_storage_system.dto.user.changePassword.ResetUserPasswordByTenantAdminRequest;
 import com.java.file_storage_system.dto.user.searchUser.UserSearchPageResponse;
+import com.java.file_storage_system.exception.ForbiddenException;
 import com.java.file_storage_system.exception.UnauthorizedException;
 import com.java.file_storage_system.payload.ApiResponse;
 import com.java.file_storage_system.service.UserService;
 import com.java.file_storage_system.custom.CustomUserDetails;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,8 +25,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.validation.annotation.Validated;
 
 @AllArgsConstructor
+@Validated
 @RestController
 @RequestMapping("/api/v1/users")
 public class UserController {
@@ -71,17 +76,15 @@ public class UserController {
 	public ResponseEntity<ApiResponse<UserSearchPageResponse>> searchUsersInTenant(
 			Authentication authentication,
 			@RequestParam(value = "keyword", required = false) String keyword,
-			@RequestParam(value = "page", defaultValue = "0") int page,
-			@RequestParam(value = "size", defaultValue = "10") int size,
+			@RequestParam(value = "page", defaultValue = "0") @Min(0) int page,
+			@RequestParam(value = "size", defaultValue = "10") @Min(1) @Max(100) int size,
 			HttpServletRequest httpServletRequest
 	) {
 		CustomUserDetails principal = extractPrincipal(authentication);
 		String tenantId = principal.getTenantId();
 
 		if (tenantId == null || tenantId.isBlank()) {
-			return ResponseEntity
-					.status(HttpStatus.FORBIDDEN)
-					.body(ApiResponse.error("Tenant scope is required for user search", httpServletRequest.getRequestURI()));
+			throw new ForbiddenException("Tenant scope is required for user search");
 		}
 
 		UserSearchPageResponse users = userService.searchUsersInTenant(tenantId, keyword, page, size);

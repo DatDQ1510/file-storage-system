@@ -2,7 +2,6 @@ package com.java.file_storage_system.service.impl;
 
 import com.java.file_storage_system.repository.BaseRepository;
 import com.java.file_storage_system.service.BaseService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -18,13 +17,6 @@ public abstract class BaseServiceImpl<T, R extends BaseRepository<T>> implements
 
     protected BaseServiceImpl(R repository) {
         this.repository = repository;
-    }
-
-    @Autowired
-    protected void setRepository(R repository) {
-        if (this.repository == null) {
-            this.repository = repository;
-        }
     }
 
     @Override

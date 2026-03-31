@@ -9,7 +9,9 @@ import com.java.file_storage_system.exception.ResourceNotFoundException;
 import com.java.file_storage_system.repository.ChunkRepository;
 import com.java.file_storage_system.repository.TenantRepository;
 import com.java.file_storage_system.service.ChunkService;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,11 +22,6 @@ import java.util.List;
 public class ChunkServiceImpl extends BaseServiceImpl<ChunkEntity, ChunkRepository> implements ChunkService {
 
     private final TenantRepository tenantRepository;
-
-    public ChunkServiceImpl(ChunkRepository repository, TenantRepository tenantRepository) {
-        super(repository);
-        this.tenantRepository = tenantRepository;
-    }
 
     @Override
     @Transactional(readOnly = true)

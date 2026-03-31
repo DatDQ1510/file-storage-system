@@ -6,10 +6,15 @@ import com.java.file_storage_system.dto.project.ProjectRequest;
 import com.java.file_storage_system.dto.project.ProjectResponse;
 import com.java.file_storage_system.dto.project.member.AddProjectMemberRequest;
 import com.java.file_storage_system.dto.project.member.ProjectMemberResponse;
+import com.java.file_storage_system.exception.ForbiddenException;
+import com.java.file_storage_system.payload.ApiResponse;
 import com.java.file_storage_system.service.ProjectService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,17 +24,18 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.validation.annotation.Validated;
 
 @Slf4j
+@Validated
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/v1/projects")
 public class ProjectController {
 
-    @Autowired
-    private ProjectService projectService;
+    private final ProjectService projectService;
 
-    @Autowired
-    private UserContext userContext;
+    private final UserContext userContext;
 
     /**
      * Tạo project mới - Chỉ TenantAdmin có thể tạo
@@ -38,55 +44,56 @@ public class ProjectController {
      * @return ProjectResponse
      */
     @PostMapping
-    public ResponseEntity<ProjectResponse> createProject(@Valid @RequestBody ProjectRequest request) {
+    public ResponseEntity<ApiResponse<ProjectResponse>> createProject(
+            @Valid @RequestBody ProjectRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
         log.info("Received request to create project: {} by user: {}", request.nameProject(), userContext.getUsername());
 
-        // Kiểm tra user có phải TenantAdmin không
-        if (!userContext.isTenantAdmin()) {
-            log.warn("User {} không phải TenantAdmin", userContext.getUsername());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
+        requireTenantAdmin();
 
         // Tạo project
         ProjectResponse response = projectService.createProject(request, userContext.getId());
         log.info("Project created successfully with ID: {}", response.id());
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(ApiResponse.success("Create project successfully", response, httpServletRequest.getRequestURI()));
     }
 
     @GetMapping
-    public ResponseEntity<ProjectPageResponse> getAllProjectsByTenantAdmin(
-            @RequestParam(value = "page", defaultValue = "0") int page,
-            @RequestParam(value = "size", defaultValue = "10") int size
+        public ResponseEntity<ApiResponse<ProjectPageResponse>> getAllProjectsByTenantAdmin(
+            @RequestParam(value = "page", defaultValue = "0") @Min(0) int page,
+            @RequestParam(value = "size", defaultValue = "10") @Min(1) @Max(100) int size,
+            HttpServletRequest httpServletRequest
     ) {
-        if (!userContext.isTenantAdmin()) {
-            log.warn("User {} không phải TenantAdmin", userContext.getUsername());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
+        requireTenantAdmin();
 
         ProjectPageResponse response = projectService.getAllProjectsByTenantAdmin(userContext.getId(), page, size);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(
+            ApiResponse.success("Get projects successfully", response, httpServletRequest.getRequestURI())
+        );
     }
 
     @GetMapping("/search")
-    public ResponseEntity<ProjectPageResponse> searchProjectsByTenantAdmin(
+        public ResponseEntity<ApiResponse<ProjectPageResponse>> searchProjectsByTenantAdmin(
             @RequestParam(value = "keyword", required = false) String keyword,
-            @RequestParam(value = "page", defaultValue = "0") int page,
-            @RequestParam(value = "size", defaultValue = "10") int size
+            @RequestParam(value = "page", defaultValue = "0") @Min(0) int page,
+            @RequestParam(value = "size", defaultValue = "10") @Min(1) @Max(100) int size,
+            HttpServletRequest httpServletRequest
     ) {
-        if (!userContext.isTenantAdmin()) {
-            log.warn("User {} không phải TenantAdmin", userContext.getUsername());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
+        requireTenantAdmin();
 
         ProjectPageResponse response = projectService.searchProjectsByTenantAdmin(userContext.getId(), keyword, page, size);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(
+            ApiResponse.success("Search projects successfully", response, httpServletRequest.getRequestURI())
+        );
     }
 
     @PostMapping("/{projectId}/members")
-    public ResponseEntity<ProjectMemberResponse> addUserToProject(
+        public ResponseEntity<ApiResponse<ProjectMemberResponse>> addUserToProject(
             @PathVariable("projectId") String projectId,
-            @Valid @RequestBody AddProjectMemberRequest request
+            @Valid @RequestBody AddProjectMemberRequest request,
+            HttpServletRequest httpServletRequest
     ) {
         ProjectMemberResponse response = projectService.addUserToProject(
                 projectId,
@@ -96,6 +103,14 @@ public class ProjectController {
                 userContext.getTenantId()
         );
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(ApiResponse.success("Add project member successfully", response, httpServletRequest.getRequestURI()));
+    }
+
+    private void requireTenantAdmin() {
+        if (!userContext.isTenantAdmin()) {
+            log.warn("User {} is not tenant admin", userContext.getUsername());
+            throw new ForbiddenException("Only tenant admin can perform this action");
+        }
     }
 }

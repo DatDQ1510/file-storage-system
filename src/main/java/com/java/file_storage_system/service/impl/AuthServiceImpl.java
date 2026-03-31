@@ -113,18 +113,19 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public void sendForgotPasswordCode(ForgotPasswordSendCodeRequest request) {
         String normalizedEmail = normalizeEmail(request.email());
-
-        UserEntity user = userRepository.findByEmailIgnoreCase(normalizedEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("Email not found"));
+        UserEntity user = userRepository.findByEmailIgnoreCase(normalizedEmail).orElse(null);
 
         String code = generate6DigitCode();
         String codeKey = getForgotPasswordCodeKey(normalizedEmail);
         String markerKey = getForgotPasswordMarkerKey(normalizedEmail);
 
-        redisTemplate.opsForValue().set(codeKey, code, Duration.ofMinutes(forgotPasswordCodeTtlMinutes)); // thời hạn của digital code
-        redisTemplate.opsForValue().set(markerKey, "1", Duration.ofMinutes(forgotPasswordMarkerTtlMinutes)); // đánh dấu đã gửi email
+        // Always set marker/code to avoid leaking whether an email exists.
+        redisTemplate.opsForValue().set(codeKey, code, Duration.ofMinutes(forgotPasswordCodeTtlMinutes));
+        redisTemplate.opsForValue().set(markerKey, "1", Duration.ofMinutes(forgotPasswordMarkerTtlMinutes));
 
-        sendForgotPasswordMail(user.getEmail(), code);
+        if (user != null) {
+            sendForgotPasswordMail(user.getEmail(), code);
+        }
     }
 
     @Override
@@ -234,7 +235,7 @@ public class AuthServiceImpl implements AuthService {
         }
         message.setTo(toEmail);
         message.setSubject("Password Reset Verification Code");
-        message.setText("Your password reset code is: " + code + "\nThis code will expire in 2 minutes.");
+        message.setText("Your password reset code is: " + code + "\nThis code will expire in 3 minutes.");
         mailSender.send(message);
     }
 }

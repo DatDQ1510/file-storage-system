@@ -22,11 +22,13 @@ import com.java.file_storage_system.repository.TenantPlanRepository;
 import com.java.file_storage_system.repository.TenantRepository;
 import com.java.file_storage_system.service.PaymentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +40,9 @@ public class PaymentServiceImpl implements PaymentService {
     private final TenantRepository tenantRepository;
     private final SubscriptionPlanRepository subscriptionPlanRepository;
     private final TenantPlanRepository tenantPlanRepository;
+
+    @Value("${app.payment.webhook-secret:}")
+    private String webhookSecret;
 
     @Override
     @Transactional
@@ -96,6 +101,11 @@ public class PaymentServiceImpl implements PaymentService {
 
         if (transaction.getProvider() != request.provider()) {
             throw new ConflictException("Webhook provider does not match transaction provider");
+        }
+
+        // Webhooks are frequently retried by providers; keep this flow idempotent.
+        if (transaction.getStatus() == PaymentTransactionStatus.SUCCESS) {
+            return mapTransactionResponse(transaction);
         }
 
         if (request.status() == PaymentTransactionStatus.SUCCESS) {
@@ -187,7 +197,16 @@ public class PaymentServiceImpl implements PaymentService {
      * Replace with provider signature verification logic.
      */
     private boolean verifyWebhookSignature(PaymentWebhookRequest request) {
-        return request.signature() == null || !request.signature().isBlank();
+        if (webhookSecret == null || webhookSecret.isBlank()) {
+            return false;
+        }
+
+        String signature = request.signature();
+        if (signature == null || signature.isBlank()) {
+            return false;
+        }
+
+        return Objects.equals(webhookSecret, signature.trim());
     }
 
     /**

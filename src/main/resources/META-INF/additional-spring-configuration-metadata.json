@@ -1,0 +1,91 @@
+{
+  "groups": [
+    {
+      "name": "minio",
+      "type": "java.lang.Object",
+      "sourceType": "com.java.file_storage_system"
+    },
+    {
+      "name": "app.security",
+      "type": "java.lang.Object",
+      "sourceType": "com.java.file_storage_system"
+    },
+    {
+      "name": "app.mail",
+      "type": "java.lang.Object",
+      "sourceType": "com.java.file_storage_system"
+    }
+  ],
+  "properties": [
+    {
+      "name": "minio.endpoint",
+      "type": "java.lang.String",
+      "description": "MinIO server endpoint."
+    },
+    {
+      "name": "minio.access-key",
+      "type": "java.lang.String",
+      "description": "MinIO access key."
+    },
+    {
+      "name": "minio.secret-key",
+      "type": "java.lang.String",
+      "description": "MinIO secret key."
+    },
+    {
+      "name": "minio.bucket",
+      "type": "java.lang.String",
+      "description": "Default MinIO bucket name."
+    },
+    {
+      "name": "minio.secure",
+      "type": "java.lang.Boolean",
+      "description": "Use secure MinIO connection (TLS)."
+    },
+    {
+      "name": "app.security.system-admin-bootstrap-secret",
+      "type": "java.lang.String",
+      "description": "Bootstrap secret for creating initial system admin."
+    },
+    {
+      "name": "app.security.jwt-secret",
+      "type": "java.lang.String",
+      "description": "Secret used to sign JWT tokens."
+    },
+    {
+      "name": "app.security.jwt-access-expiration-ms",
+      "type": "java.lang.Long",
+      "description": "Access token expiration in milliseconds."
+    },
+    {
+      "name": "app.security.jwt-refresh-expiration-ms",
+      "type": "java.lang.Long",
+      "description": "Refresh token expiration in milliseconds."
+    },
+    {
+      "name": "app.security.refresh-cookie-name",
+      "type": "java.lang.String",
+      "description": "Name of refresh token cookie."
+    },
+    {
+      "name": "app.security.refresh-cookie-secure",
+      "type": "java.lang.Boolean",
+      "description": "Whether refresh cookie is secure-only."
+    },
+    {
+      "name": "app.security.refresh-cookie-same-site",
+      "type": "java.lang.String",
+      "description": "SameSite mode for refresh cookie."
+    },
+    {
+      "name": "app.mail.test-scheduler-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Enable test mail scheduler."
+    },
+    {
+      "name": "app.mail.test-recipient",
+      "type": "java.lang.String",
+      "description": "Recipient email used by test mail scheduler."
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 package com.java.file_storage_system.service.impl;
 
+import com.java.file_storage_system.constant.MessageConstants;
 import com.java.file_storage_system.dto.project.ProjectRequest;
 import com.java.file_storage_system.dto.project.ProjectPageResponse;
 import com.java.file_storage_system.dto.project.ProjectResponse;
@@ -54,13 +55,13 @@ public class ProjectServiceImpl extends BaseServiceImpl<ProjectEntity, ProjectRe
         // 3. Kiểm tra Owner có phải thành viên của tenant của TenantAdmin không
         if (!owner.getTenant().getId().equals(tenantAdmin.getTenant().getId())) {
             log.warn("Owner {} không phải thành viên của tenant {}", request.ownerId(), tenantAdmin.getTenant().getId());
-            throw new ForbiddenException("Owner không phải thành viên của tenant này");
+            throw new ForbiddenException(MessageConstants.PROJECT_OWNER_NOT_MEMBER);
         }
 
         // 4. Kiểm tra project name có trùng không trong tenant
         if (repository.existsByNameProjectAndTenantId(request.nameProject(), tenantAdmin.getTenant().getId())) {
             log.warn("Project name {} đã tồn tại trong tenant {}", request.nameProject(), tenantAdmin.getTenant().getId());
-            throw new ConflictException("Tên project đã tồn tại trong tenant này");
+            throw new ConflictException(MessageConstants.PROJECT_ALREADY_EXISTS);
         }
 
         // 5. Tạo project
@@ -86,7 +87,7 @@ public class ProjectServiceImpl extends BaseServiceImpl<ProjectEntity, ProjectRe
             String actorTenantId
     ) {
         ProjectEntity project = repository.findById(projectId)
-                .orElseThrow(() -> new ResourceNotFoundException("Project không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException(MessageConstants.PROJECT_NOT_FOUND));
 
         validateActorCanManageMembership(project, actorId, actorRole, actorTenantId);
 
@@ -94,7 +95,7 @@ public class ProjectServiceImpl extends BaseServiceImpl<ProjectEntity, ProjectRe
         validateUserSameTenant(project, userToAdd);
 
         if (userProjectRepository.existsByUserIdAndProjectId(userToAdd.getId(), project.getId())) {
-            throw new ConflictException("User đã là thành viên của project");
+            throw new ConflictException(MessageConstants.PROJECT_USER_ALREADY_MEMBER);
         }
 
         int permission = normalizePermission(request.permission());
@@ -107,7 +108,7 @@ public class ProjectServiceImpl extends BaseServiceImpl<ProjectEntity, ProjectRe
     @Override
     public ProjectResponse getProjectById(String projectId) {
         ProjectEntity project = repository.findById(projectId)
-                .orElseThrow(() -> new ResourceNotFoundException("Project không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException(MessageConstants.PROJECT_NOT_FOUND));
         return mapToResponse(project);
     }
 

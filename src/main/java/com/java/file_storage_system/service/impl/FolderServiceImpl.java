@@ -1,5 +1,6 @@
 package com.java.file_storage_system.service.impl;
 
+import com.java.file_storage_system.constant.MessageConstants;
 import com.java.file_storage_system.dto.folder.CreateFolderRequest;
 import com.java.file_storage_system.dto.folder.FolderResponse;
 import com.java.file_storage_system.dto.folder.UpdateFolderRequest;
@@ -79,13 +80,13 @@ public class FolderServiceImpl extends BaseServiceImpl<FolderEntity, FolderRepos
 
         UserEntity owner = findUser(request.ownerId());
         if (!owner.getTenant().getId().equals(folder.getTenant().getId())) {
-            throw new ForbiddenException("Owner không cùng tenant với folder");
+            throw new ForbiddenException(MessageConstants.FOLDER_OWNER_NOT_IN_TENANT);
         }
 
         FolderEntity parent = findParentFolderOrNull(request.parentFolderId());
         validateParentConsistency(folder.getProject(), folder.getTenant(), parent);
         if (parent != null && folder.getId().equals(parent.getId())) {
-            throw new ForbiddenException("Folder không thể là parent của chính nó");
+            throw new ForbiddenException(MessageConstants.FOLDER_CANNOT_BE_OWN_PARENT);
         }
 
         folder.setNameFolder(normalizeRequired(request.nameFolder(), "nameFolder"));
@@ -129,10 +130,10 @@ public class FolderServiceImpl extends BaseServiceImpl<FolderEntity, FolderRepos
 
     private void validateTenantConsistency(TenantEntity tenant, ProjectEntity project, UserEntity owner) {
         if (!project.getTenant().getId().equals(tenant.getId())) {
-            throw new ForbiddenException("Project không thuộc tenant được chọn");
+            throw new ForbiddenException(MessageConstants.TENANT_PROJECT_MISMATCH);
         }
         if (!owner.getTenant().getId().equals(tenant.getId())) {
-            throw new ForbiddenException("Owner không thuộc tenant được chọn");
+            throw new ForbiddenException(MessageConstants.TENANT_OWNER_MISMATCH);
         }
     }
 
@@ -142,10 +143,10 @@ public class FolderServiceImpl extends BaseServiceImpl<FolderEntity, FolderRepos
         }
 
         if (!parent.getProject().getId().equals(project.getId())) {
-            throw new ForbiddenException("Parent folder không cùng project");
+            throw new ForbiddenException(MessageConstants.FOLDER_PROJECT_MISMATCH);
         }
         if (!parent.getTenant().getId().equals(tenant.getId())) {
-            throw new ForbiddenException("Parent folder không cùng tenant");
+            throw new ForbiddenException(MessageConstants.FOLDER_TENANT_MISMATCH);
         }
     }
 
