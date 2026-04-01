@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Objects;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -58,13 +59,19 @@ public class SystemAdminServiceImpl extends BaseServiceImpl<SystemAdminEntity, S
 
     private SystemAdminCreatedResponse createSystemAdminInternal(CreateSystemAdminRequest request) {
         String normalizedUserName = request.getUserName().trim().toLowerCase();
+        String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
 
         if (repository.existsByUserNameIgnoreCase(normalizedUserName)) {
             throw new ConflictException("System admin username already exists: " + normalizedUserName);
         }
 
+        if (repository.findByEmailIgnoreCase(normalizedEmail).isPresent()) {
+            throw new ConflictException("System admin email already exists: " + normalizedEmail);
+        }
+
         SystemAdminEntity entity = new SystemAdminEntity();
         entity.setUserName(normalizedUserName);
+        entity.setEmail(normalizedEmail);
         entity.setHashedPassword(passwordEncoder.encode(request.getPassword()));
 
         SystemAdminEntity saved = repository.save(entity);

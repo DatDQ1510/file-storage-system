@@ -27,11 +27,14 @@ public class CustomUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String userName) throws UsernameNotFoundException {
         String normalized = userName.trim().toLowerCase();
 
-        SystemAdminEntity systemAdmin = systemAdminRepository.findByUserNameIgnoreCase(normalized).orElse(null);
+        SystemAdminEntity systemAdmin = systemAdminRepository.findByUserNameIgnoreCase(normalized)
+                .or(() -> systemAdminRepository.findByEmailIgnoreCase(normalized))
+                .orElse(null);
         if (systemAdmin != null) {
             return new CustomUserDetails(
                     systemAdmin.getId(),
                     systemAdmin.getUserName(),
+                    systemAdmin.getHashedPassword(),
                     "SYSTEM_ADMIN",
                     null
             );
@@ -44,6 +47,7 @@ public class CustomUserDetailsService implements UserDetailsService {
             return new CustomUserDetails(
                     tenantAdmin.getId(),
                     tenantAdmin.getUserName(),
+                    tenantAdmin.getHashedPassword(),
                     "TENANT_ADMIN",
                     tenantAdmin.getTenant() == null ? null : tenantAdmin.getTenant().getId()
             );
@@ -56,6 +60,7 @@ public class CustomUserDetailsService implements UserDetailsService {
             return new CustomUserDetails(
                     user.getId(),
                     user.getUserName(),
+                    user.getHashedPassword(),
                     "USER",
                     user.getTenant() == null ? null : user.getTenant().getId()
             );

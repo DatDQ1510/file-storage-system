@@ -17,6 +17,7 @@ import java.util.List;
 public class CustomUserDetails implements UserDetails {
     private final String id;
     private final String username;
+    private final String password;
     private final String role;
     private final String tenantId;
 
@@ -30,6 +31,6 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public @Nullable String getPassword() {
-        return "";
+        return password;
     }
 }

@@ -11,4 +11,6 @@ public interface SystemAdminRepository extends BaseRepository<SystemAdminEntity>
 	boolean existsByUserNameIgnoreCase(String username);
 
 	Optional<SystemAdminEntity> findByUserNameIgnoreCase(String username);
+
+	Optional<SystemAdminEntity> findByEmailIgnoreCase(String email);
 }

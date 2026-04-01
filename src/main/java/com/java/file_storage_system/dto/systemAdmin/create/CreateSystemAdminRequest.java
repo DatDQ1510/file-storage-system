@@ -11,6 +11,10 @@ public class CreateSystemAdminRequest {
     @Size(max = 100, message = "userName must be at most 100 characters")
     private String userName;
 
+    @NotBlank(message = "email is required")
+    @Size(max = 255, message = "email must be at most 255 characters")
+    private String email;
+
     @NotBlank(message = "password is required")
     @Size(min = 8, max = 100, message = "password must be between 8 and 100 characters")
     private String password;

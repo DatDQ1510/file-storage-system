@@ -1,3 +1,5 @@
+debug: true
+
 spring:
   application:
     name: file_storage_system
@@ -53,9 +55,17 @@ spring:
           max-active: 8
           max-idle: 8
 
+logging:
+  level:
+    root: INFO
+    com.java.file_storage_system: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+
 app:
   security:
-    system-admin-bootstrap-secret: ${SYSTEM_ADMIN_BOOTSTRAP_SECRET:}
+    system-admin-bootstrap-secret: ${SYSTEM_ADMIN_BOOTSTRAP_SECRET:DQD15102003}
     jwt-secret: ${JWT_SECRET:replace-this-with-a-very-long-secret-key-at-least-32-bytes}
     jwt-access-expiration-ms: ${JWT_ACCESS_EXPIRATION_MS:900000}
     jwt-refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:2592000000}
