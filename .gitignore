@@ -33,3 +33,7 @@ build/
 .vscode/
 src/main/java/.env
 *.md
+
+.env
+.env.prod
+.env.dev

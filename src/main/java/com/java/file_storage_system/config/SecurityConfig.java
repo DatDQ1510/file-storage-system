@@ -44,13 +44,20 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(
-                                "/api/v1/auth/login",
-                                "/api/v1/auth/refresh",
-                                "/api/v1/auth/logout",
-                                "/api/v1/auth/forgot-password/send-code",
-                                "/api/v1/auth/forgot-password/verify-code",
-                                "/api/v1/auth/forgot-password/reset",
-                                "/api/v1/payments/webhook"
+                            "/swagger-ui.html",
+                            "/swagger-ui/**",
+                            "/v3/api-docs/**",
+                            "/swagger-resources/**",
+                            "/webjars/**"
+                        ).permitAll()
+                        .requestMatchers(
+                            "/api/v1/auth/login",
+                            "/api/v1/auth/refresh",
+                            "/api/v1/auth/logout",
+                            "/api/v1/auth/forgot-password/send-code",
+                            "/api/v1/auth/forgot-password/verify-code",
+                            "/api/v1/auth/forgot-password/reset",
+                            "/api/v1/payments/webhook"
                         ).permitAll()
                         .requestMatchers("/api/v1/system-admins/bootstrap").permitAll()
                         .requestMatchers("/api/v1/system-admins/**").hasRole("SYSTEM_ADMIN")
@@ -63,4 +70,5 @@ public class SecurityConfig {
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
+
 }
