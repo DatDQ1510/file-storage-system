@@ -52,9 +52,9 @@ public class AuthServiceImpl implements AuthService {
     private final RedisTemplate<Object, Object> redisTemplate;
     private final JavaMailSender mailSender;
 
-    private static final int forgotPasswordCodeTtlMinutes = 3;
+    private static final int forgotPasswordCodeTtlMinutes = 10;
 
-    private static final int forgotPasswordMarkerTtlMinutes = 3;
+    private static final int forgotPasswordMarkerTtlMinutes = 15;
 
     @Value("${spring.mail.username:}")
     private String mailFromAddress;
@@ -113,7 +113,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public void sendForgotPasswordCode(ForgotPasswordSendCodeRequest request) {
         String normalizedEmail = normalizeEmail(request.email());
-        UserEntity user = userRepository.findByEmailIgnoreCase(normalizedEmail).orElse(null);
+        boolean emailExists = hasForgotPasswordAccountByEmail(normalizedEmail);
 
         String code = generate6DigitCode();
         String codeKey = getForgotPasswordCodeKey(normalizedEmail);
@@ -123,9 +123,15 @@ public class AuthServiceImpl implements AuthService {
         redisTemplate.opsForValue().set(codeKey, code, Duration.ofMinutes(forgotPasswordCodeTtlMinutes));
         redisTemplate.opsForValue().set(markerKey, "1", Duration.ofMinutes(forgotPasswordMarkerTtlMinutes));
 
-        if (user != null) {
-            sendForgotPasswordMail(user.getEmail(), code);
+        if (emailExists) {
+            sendForgotPasswordMail(normalizedEmail, code);
         }
+    }
+
+    private boolean hasForgotPasswordAccountByEmail(String normalizedEmail) {
+        return userRepository.findByEmailIgnoreCase(normalizedEmail).isPresent()
+                || tenantAdminRepository.findByEmailIgnoreCase(normalizedEmail).isPresent()
+                || systemAdminRepository.findByEmailIgnoreCase(normalizedEmail).isPresent();
     }
 
     @Override
@@ -155,14 +161,39 @@ public class AuthServiceImpl implements AuthService {
         verifyForgotPasswordCode(new ForgotPasswordVerifyCodeRequest(request.email(), request.code()));
 
         String normalizedEmail = normalizeEmail(request.email());
-        UserEntity user = userRepository.findByEmailIgnoreCase(normalizedEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("Email not found"));
+        String encodedPassword = passwordEncoder.encode(request.newPassword());
 
-        user.setHashedPassword(passwordEncoder.encode(request.newPassword()));
-        userRepository.save(user);
+        if (!updateForgotPasswordForAccountByEmail(normalizedEmail, encodedPassword)) {
+            throw new ResourceNotFoundException("Email not found");
+        }
 
         redisTemplate.delete(getForgotPasswordCodeKey(normalizedEmail));
         redisTemplate.delete(getForgotPasswordMarkerKey(normalizedEmail));
+    }
+
+    private boolean updateForgotPasswordForAccountByEmail(String normalizedEmail, String encodedPassword) {
+        UserEntity user = userRepository.findByEmailIgnoreCase(normalizedEmail).orElse(null);
+        if (user != null) {
+            user.setHashedPassword(encodedPassword);
+            userRepository.save(user);
+            return true;
+        }
+
+        TenantAdminEntity tenantAdmin = tenantAdminRepository.findByEmailIgnoreCase(normalizedEmail).orElse(null);
+        if (tenantAdmin != null) {
+            tenantAdmin.setHashedPassword(encodedPassword);
+            tenantAdminRepository.save(tenantAdmin);
+            return true;
+        }
+
+        SystemAdminEntity systemAdmin = systemAdminRepository.findByEmailIgnoreCase(normalizedEmail).orElse(null);
+        if (systemAdmin != null) {
+            systemAdmin.setHashedPassword(encodedPassword);
+            systemAdminRepository.save(systemAdmin);
+            return true;
+        }
+
+        return false;
     }
 
     private AuthTokens issueTokens(CustomUserDetails principal) {

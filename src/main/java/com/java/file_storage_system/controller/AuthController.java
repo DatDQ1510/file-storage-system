@@ -141,7 +141,7 @@ public class AuthController {
         );
     }
 
-    @PatchMapping("/forgot-password/reset")
+    @PatchMapping("/forgot-password/reset-password")
     public ResponseEntity<ApiResponse<String>> resetForgotPassword(
             @Valid @RequestBody ForgotPasswordResetRequest request,
             HttpServletRequest httpServletRequest

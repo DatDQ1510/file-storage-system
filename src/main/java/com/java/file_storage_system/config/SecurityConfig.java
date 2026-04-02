@@ -56,7 +56,7 @@ public class SecurityConfig {
                             "/api/v1/auth/logout",
                             "/api/v1/auth/forgot-password/send-code",
                             "/api/v1/auth/forgot-password/verify-code",
-                            "/api/v1/auth/forgot-password/reset",
+                            "/api/v1/auth/forgot-password/reset-password",
                             "/api/v1/payments/webhook"
                         ).permitAll()
                         .requestMatchers("/api/v1/system-admins/bootstrap").permitAll()
