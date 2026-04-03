@@ -1,5 +1,6 @@
 package com.java.file_storage_system.controller;
 
+import com.java.file_storage_system.constant.UserRole;
 import com.java.file_storage_system.custom.CustomUserDetails;
 import com.java.file_storage_system.dto.auth.AuthTokenResponse;
 import com.java.file_storage_system.dto.auth.ForgotPasswordResetRequest;
@@ -10,6 +11,7 @@ import com.java.file_storage_system.dto.user.changePassword.ChangePasswordReques
 import com.java.file_storage_system.exception.UnauthorizedException;
 import com.java.file_storage_system.payload.ApiResponse;
 import com.java.file_storage_system.service.AuthService;
+import com.java.file_storage_system.service.RolePermissionService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +36,7 @@ import java.time.Duration;
 public class AuthController {
 
     private final AuthService authService;
+    private final RolePermissionService rolePermissionService;
 
     @Value("${app.security.refresh-cookie-name:refresh_token}")
     private String refreshCookieName;
@@ -53,15 +56,21 @@ public class AuthController {
             HttpServletRequest httpServletRequest
     ) {
         AuthService.AuthTokens tokens = authService.login(request);
+        UserRole role = UserRole.fromString(tokens.role());
 
         ResponseCookie refreshCookie = buildRefreshCookie(tokens.refreshToken(), refreshExpirationMs);
-        AuthTokenResponse response = new AuthTokenResponse(
-                tokens.accessToken(),
-                "Bearer",
-                tokens.accessTokenExpiresInMs(),
-                tokens.role(),
-                tokens.tenantId()
-        );
+        AuthTokenResponse response = AuthTokenResponse.builder()
+                .accessToken(tokens.accessToken())
+                .tokenType("Bearer")
+                .expiresInMs(tokens.accessTokenExpiresInMs())
+                .role(tokens.role())
+                .tenantId(tokens.tenantId())
+                .userId(tokens.userId())
+                .username(tokens.username())
+                .email(tokens.email())
+                .redirectUrl(rolePermissionService.getRedirectUrlByRole(role))
+                .userDisplayName(tokens.username())
+                .build();
 
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -79,15 +88,22 @@ public class AuthController {
         }
 
         AuthService.AuthTokens tokens = authService.refresh(refreshToken);
+        UserRole role = UserRole.fromString(tokens.role());
+        
         ResponseCookie refreshCookie = buildRefreshCookie(tokens.refreshToken(), refreshExpirationMs);
 
-        AuthTokenResponse response = new AuthTokenResponse(
-                tokens.accessToken(),
-                "Bearer",
-                tokens.accessTokenExpiresInMs(),
-                tokens.role(),
-                tokens.tenantId()
-        );
+        AuthTokenResponse response = AuthTokenResponse.builder()
+                .accessToken(tokens.accessToken())
+                .tokenType("Bearer")
+                .expiresInMs(tokens.accessTokenExpiresInMs())
+                .role(tokens.role())
+                .tenantId(tokens.tenantId())
+                .userId(tokens.userId())
+                .username(tokens.username())
+                .email(tokens.email())
+                .redirectUrl(rolePermissionService.getRedirectUrlByRole(role))
+                .userDisplayName(tokens.username())
+                .build();
 
         return ResponseEntity
                 .status(HttpStatus.OK)

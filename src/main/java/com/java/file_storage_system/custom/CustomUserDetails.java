@@ -20,6 +20,7 @@ public class CustomUserDetails implements UserDetails {
     private final String password;
     private final String role;
     private final String tenantId;
+    private final String email;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

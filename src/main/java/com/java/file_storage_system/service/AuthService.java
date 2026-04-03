@@ -26,7 +26,10 @@ public interface AuthService {
             String refreshToken,
             long accessTokenExpiresInMs,
             String role,
-            String tenantId
+            String tenantId,
+            String userId,
+            String username,
+            String email
     ) {
     }
 }

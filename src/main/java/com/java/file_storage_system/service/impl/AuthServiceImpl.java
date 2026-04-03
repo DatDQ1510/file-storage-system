@@ -205,7 +205,10 @@ public class AuthServiceImpl implements AuthService {
                 newRefreshToken,
                 jwtTokenProvider.getAccessTokenExpirationMs(),
                 principal.getRole(),
-                principal.getTenantId()
+                principal.getTenantId(),
+                principal.getId(),
+                principal.getUsername(),
+                principal.getEmail()
         );
     }
 

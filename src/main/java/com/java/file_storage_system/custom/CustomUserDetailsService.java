@@ -36,7 +36,8 @@ public class CustomUserDetailsService implements UserDetailsService {
                     systemAdmin.getUserName(),
                     systemAdmin.getHashedPassword(),
                     "SYSTEM_ADMIN",
-                    null
+                    null,
+                    systemAdmin.getEmail()
             );
         }
 
@@ -49,7 +50,8 @@ public class CustomUserDetailsService implements UserDetailsService {
                     tenantAdmin.getUserName(),
                     tenantAdmin.getHashedPassword(),
                     "TENANT_ADMIN",
-                    tenantAdmin.getTenant() == null ? null : tenantAdmin.getTenant().getId()
+                    tenantAdmin.getTenant() == null ? null : tenantAdmin.getTenant().getId(),
+                    tenantAdmin.getEmail()
             );
         }
 
@@ -62,7 +64,8 @@ public class CustomUserDetailsService implements UserDetailsService {
                     user.getUserName(),
                     user.getHashedPassword(),
                     "USER",
-                    user.getTenant() == null ? null : user.getTenant().getId()
+                    user.getTenant() == null ? null : user.getTenant().getId(),
+                    user.getEmail()
             );
         }
 
