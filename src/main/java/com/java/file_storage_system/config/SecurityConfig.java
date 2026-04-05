@@ -1,10 +1,14 @@
 package com.java.file_storage_system.config;
 
+import com.java.file_storage_system.payload.ApiResponse;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.java.file_storage_system.custom.JwtAuthenticationFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -39,12 +43,29 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            JwtAuthenticationFilter jwtAuthenticationFilter
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            ObjectMapper objectMapper
     ) throws Exception {
         http
                 .cors(cors -> {})
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                    response.getWriter().write(objectMapper.writeValueAsString(
+                        ApiResponse.error("Unauthorized", request.getRequestURI())
+                    ));
+                })
+                .accessDeniedHandler((request, response, accessDeniedException) -> {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                    response.getWriter().write(objectMapper.writeValueAsString(
+                        ApiResponse.error("Forbidden", request.getRequestURI())
+                    ));
+                })
+            )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(
@@ -66,6 +87,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/system-admins/bootstrap").permitAll()
                         .requestMatchers("/api/v1/system-admins/**").hasRole("SYSTEM_ADMIN")
                         .requestMatchers("/api/v1/tenant-admins/**").hasRole("SYSTEM_ADMIN")
+                        .requestMatchers("/api/v1/subscription-plans/**").hasRole("SYSTEM_ADMIN")
                         .requestMatchers("/api/v1/users/search").hasRole("TENANT_ADMIN")
                         .requestMatchers("/api/v1/users/tenant-admin/**").hasRole("TENANT_ADMIN")
                         .anyRequest().authenticated()

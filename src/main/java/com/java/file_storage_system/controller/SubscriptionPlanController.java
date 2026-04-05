@@ -1,7 +1,9 @@
 package com.java.file_storage_system.controller;
 
-import com.java.file_storage_system.entity.SubscriptionPlanEntity;
+import com.java.file_storage_system.dto.subscriptionPlan.SubscriptionPlanRequest;
+import com.java.file_storage_system.dto.subscriptionPlan.SubscriptionPlanResponse;
 import com.java.file_storage_system.exception.ResourceNotFoundException;
+import com.java.file_storage_system.mapper.SubscriptionPlanMapper;
 import com.java.file_storage_system.payload.ApiResponse;
 import com.java.file_storage_system.service.SubscriptionPlanService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,47 +28,50 @@ import java.util.List;
 public class SubscriptionPlanController {
 
     private final SubscriptionPlanService subscriptionPlanService;
+    private final SubscriptionPlanMapper subscriptionPlanMapper;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<SubscriptionPlanEntity>>> getAllSubscriptionPlans(HttpServletRequest httpServletRequest) {
-        List<SubscriptionPlanEntity> plans = subscriptionPlanService.findAll();
+    public ResponseEntity<ApiResponse<List<SubscriptionPlanResponse>>> getAllSubscriptionPlans(HttpServletRequest httpServletRequest) {
+        List<SubscriptionPlanResponse> plans = subscriptionPlanMapper.toResponses(subscriptionPlanService.findAll());
         return ResponseEntity.ok(ApiResponse.success("Get subscription plans successfully", plans, httpServletRequest.getRequestURI()));
     }
 
     @GetMapping("/{subscriptionPlanId}")
-    public ResponseEntity<ApiResponse<SubscriptionPlanEntity>> getSubscriptionPlanById(
+    public ResponseEntity<ApiResponse<SubscriptionPlanResponse>> getSubscriptionPlanById(
             @PathVariable("subscriptionPlanId") String subscriptionPlanId,
             HttpServletRequest httpServletRequest
     ) {
-        SubscriptionPlanEntity plan = subscriptionPlanService.findById(subscriptionPlanId)
+        SubscriptionPlanResponse plan = subscriptionPlanService.findById(subscriptionPlanId)
+                .map(subscriptionPlanMapper::toResponse)
                 .orElseThrow(() -> ResourceNotFoundException.byField("SubscriptionPlan", "id", subscriptionPlanId));
 
         return ResponseEntity.ok(ApiResponse.success("Get subscription plan successfully", plan, httpServletRequest.getRequestURI()));
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<SubscriptionPlanEntity>> createSubscriptionPlan(
-            @Valid @RequestBody SubscriptionPlanEntity request,
+    public ResponseEntity<ApiResponse<SubscriptionPlanResponse>> createSubscriptionPlan(
+            @Valid @RequestBody SubscriptionPlanRequest request,
             HttpServletRequest httpServletRequest
     ) {
-        // Prevent overwrite-by-id when creating new records.
-        request.setId(null);
-        SubscriptionPlanEntity created = subscriptionPlanService.save(request);
+        SubscriptionPlanResponse created = subscriptionPlanMapper.toResponse(
+                subscriptionPlanService.save(subscriptionPlanMapper.toEntity(request))
+        );
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Create subscription plan successfully", created, httpServletRequest.getRequestURI()));
     }
 
     @PutMapping("/{subscriptionPlanId}")
-    public ResponseEntity<ApiResponse<SubscriptionPlanEntity>> updateSubscriptionPlan(
+    public ResponseEntity<ApiResponse<SubscriptionPlanResponse>> updateSubscriptionPlan(
             @PathVariable("subscriptionPlanId") String subscriptionPlanId,
-            @Valid @RequestBody SubscriptionPlanEntity request,
+            @Valid @RequestBody SubscriptionPlanRequest request,
             HttpServletRequest httpServletRequest
     ) {
         subscriptionPlanService.findById(subscriptionPlanId)
                 .orElseThrow(() -> ResourceNotFoundException.byField("SubscriptionPlan", "id", subscriptionPlanId));
 
-        request.setId(subscriptionPlanId);
-        SubscriptionPlanEntity updated = subscriptionPlanService.save(request);
+        SubscriptionPlanResponse updated = subscriptionPlanMapper.toResponse(
+                subscriptionPlanService.save(subscriptionPlanMapper.toEntity(request, subscriptionPlanId))
+        );
 
         return ResponseEntity.ok(ApiResponse.success("Update subscription plan successfully", updated, httpServletRequest.getRequestURI()));
     }

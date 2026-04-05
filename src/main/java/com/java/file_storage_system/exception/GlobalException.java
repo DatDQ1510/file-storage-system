@@ -3,6 +3,7 @@ package com.java.file_storage_system.exception;
 import com.java.file_storage_system.payload.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -76,5 +77,36 @@ public class GlobalException {
                         request.getRequestURI()
                 ));
     }
+
+        @ExceptionHandler(DataIntegrityViolationException.class)
+        public ResponseEntity<ApiResponse<String>> handleDataIntegrityViolation(
+                        DataIntegrityViolationException ex,
+                        HttpServletRequest request
+        ) {
+                log.warn("Data integrity violation: {}", ex.getMessage());
+
+                String rawMessage = ex.getMostSpecificCause() != null
+                                ? ex.getMostSpecificCause().getMessage()
+                                : ex.getMessage();
+
+                String normalized = rawMessage == null ? "" : rawMessage.toLowerCase();
+                String message;
+
+                if (normalized.contains("nameplan") && normalized.contains("unique")) {
+                        message = "Subscription plan name already exists";
+                } else if (normalized.contains("duplicate") || normalized.contains("unique")) {
+                        message = "Duplicate value violates unique constraint";
+                } else if (normalized.contains("foreign key") || normalized.contains("violates foreign key")) {
+                        message = "Invalid reference to related resource";
+                } else if (normalized.contains("not-null") || normalized.contains("null value")) {
+                        message = "Required field is missing";
+                } else {
+                        message = "Request violates database constraints";
+                }
+
+                return ResponseEntity
+                                .status(HttpStatus.CONFLICT)
+                                .body(ApiResponse.error(message, request.getRequestURI()));
+        }
 
 }

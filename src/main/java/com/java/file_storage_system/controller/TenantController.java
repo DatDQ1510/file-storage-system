@@ -1,5 +1,7 @@
 package com.java.file_storage_system.controller;
 
+import com.java.file_storage_system.constant.UserRole;
+import com.java.file_storage_system.custom.RequireRole;
 import com.java.file_storage_system.dto.tenant.CreateTenantRequest;
 import com.java.file_storage_system.dto.tenant.TenantResponse;
 import com.java.file_storage_system.dto.tenant.UpdateTenantRequest;
@@ -31,7 +33,8 @@ public class TenantController {
     private final TenantService tenantService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<TenantResponse>>> getAllTenants(HttpServletRequest httpServletRequest) {
+	@RequireRole(UserRole.SYSTEM_ADMIN)
+	public ResponseEntity<ApiResponse<List<TenantResponse>>> getAllTenants(HttpServletRequest httpServletRequest) {
 	List<TenantResponse> tenants = tenantService.findAll().stream().map(this::mapToResponse).toList();
 	return ResponseEntity.ok(ApiResponse.success("Get tenants successfully", tenants, httpServletRequest.getRequestURI()));
     }
@@ -50,6 +53,7 @@ public class TenantController {
     }
 
     @PostMapping
+	@RequireRole(UserRole.SYSTEM_ADMIN)
     public ResponseEntity<ApiResponse<TenantResponse>> createTenant(
 	    @Valid @RequestBody CreateTenantRequest request,
 	    HttpServletRequest httpServletRequest
@@ -61,7 +65,8 @@ public class TenantController {
     }
 
     @PutMapping("/{tenantId}")
-    public ResponseEntity<ApiResponse<TenantResponse>> updateTenant(
+	@RequireRole(UserRole.SYSTEM_ADMIN)
+	public ResponseEntity<ApiResponse<TenantResponse>> updateTenant(
 	    @PathVariable("tenantId") String tenantId,
 	    @Valid @RequestBody UpdateTenantRequest request,
 	    HttpServletRequest httpServletRequest

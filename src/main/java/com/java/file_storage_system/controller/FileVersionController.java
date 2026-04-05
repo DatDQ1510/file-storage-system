@@ -1,7 +1,8 @@
 package com.java.file_storage_system.controller;
 
-import com.java.file_storage_system.entity.FileVersionEntity;
-import com.java.file_storage_system.exception.ResourceNotFoundException;
+import com.java.file_storage_system.dto.fileVersion.CreateFileVersionRequest;
+import com.java.file_storage_system.dto.fileVersion.FileVersionResponse;
+import com.java.file_storage_system.dto.fileVersion.UpdateFileVersionRequest;
 import com.java.file_storage_system.payload.ApiResponse;
 import com.java.file_storage_system.service.FileVersionService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,46 +29,37 @@ public class FileVersionController {
     private final FileVersionService fileVersionService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<FileVersionEntity>>> getAllFileVersions(HttpServletRequest httpServletRequest) {
-        List<FileVersionEntity> versions = fileVersionService.findAll();
+    public ResponseEntity<ApiResponse<List<FileVersionResponse>>> getAllFileVersions(HttpServletRequest httpServletRequest) {
+        List<FileVersionResponse> versions = fileVersionService.getAllFileVersions();
         return ResponseEntity.ok(ApiResponse.success("Get file versions successfully", versions, httpServletRequest.getRequestURI()));
     }
 
     @GetMapping("/{fileVersionId}")
-    public ResponseEntity<ApiResponse<FileVersionEntity>> getFileVersionById(
+    public ResponseEntity<ApiResponse<FileVersionResponse>> getFileVersionById(
             @PathVariable("fileVersionId") String fileVersionId,
             HttpServletRequest httpServletRequest
     ) {
-        FileVersionEntity fileVersion = fileVersionService.findById(fileVersionId)
-                .orElseThrow(() -> ResourceNotFoundException.byField("FileVersion", "id", fileVersionId));
-
+        FileVersionResponse fileVersion = fileVersionService.getFileVersionById(fileVersionId);
         return ResponseEntity.ok(ApiResponse.success("Get file version successfully", fileVersion, httpServletRequest.getRequestURI()));
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<FileVersionEntity>> createFileVersion(
-            @Valid @RequestBody FileVersionEntity request,
+    public ResponseEntity<ApiResponse<FileVersionResponse>> createFileVersion(
+            @Valid @RequestBody CreateFileVersionRequest request,
             HttpServletRequest httpServletRequest
     ) {
-        // Prevent overwrite-by-id when creating new records.
-        request.setId(null);
-        FileVersionEntity created = fileVersionService.save(request);
+        FileVersionResponse created = fileVersionService.createFileVersion(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Create file version successfully", created, httpServletRequest.getRequestURI()));
     }
 
     @PutMapping("/{fileVersionId}")
-    public ResponseEntity<ApiResponse<FileVersionEntity>> updateFileVersion(
+    public ResponseEntity<ApiResponse<FileVersionResponse>> updateFileVersion(
             @PathVariable("fileVersionId") String fileVersionId,
-            @Valid @RequestBody FileVersionEntity request,
+            @Valid @RequestBody UpdateFileVersionRequest request,
             HttpServletRequest httpServletRequest
     ) {
-        fileVersionService.findById(fileVersionId)
-                .orElseThrow(() -> ResourceNotFoundException.byField("FileVersion", "id", fileVersionId));
-
-        request.setId(fileVersionId);
-        FileVersionEntity updated = fileVersionService.save(request);
-
+        FileVersionResponse updated = fileVersionService.updateFileVersion(fileVersionId, request);
         return ResponseEntity.ok(ApiResponse.success("Update file version successfully", updated, httpServletRequest.getRequestURI()));
     }
 
@@ -76,10 +68,7 @@ public class FileVersionController {
             @PathVariable("fileVersionId") String fileVersionId,
             HttpServletRequest httpServletRequest
     ) {
-        fileVersionService.findById(fileVersionId)
-                .orElseThrow(() -> ResourceNotFoundException.byField("FileVersion", "id", fileVersionId));
-
-        fileVersionService.deleteById(fileVersionId);
+        fileVersionService.deleteFileVersion(fileVersionId);
         return ResponseEntity.ok(ApiResponse.success("Delete file version successfully", httpServletRequest.getRequestURI()));
     }
 }

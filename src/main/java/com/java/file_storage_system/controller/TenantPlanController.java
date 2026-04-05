@@ -1,7 +1,8 @@
 package com.java.file_storage_system.controller;
 
-import com.java.file_storage_system.entity.TenantPlan;
-import com.java.file_storage_system.exception.ResourceNotFoundException;
+import com.java.file_storage_system.dto.tenantPlan.CreateTenantPlanRequest;
+import com.java.file_storage_system.dto.tenantPlan.TenantPlanResponse;
+import com.java.file_storage_system.dto.tenantPlan.UpdateTenantPlanRequest;
 import com.java.file_storage_system.payload.ApiResponse;
 import com.java.file_storage_system.service.TenantPlanService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,45 +29,38 @@ public class TenantPlanController {
     private final TenantPlanService tenantPlanService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<TenantPlan>>> getAllTenantPlans(HttpServletRequest httpServletRequest) {
-        List<TenantPlan> tenantPlans = tenantPlanService.findAll();
+    public ResponseEntity<ApiResponse<List<TenantPlanResponse>>> getAllTenantPlans(HttpServletRequest httpServletRequest) {
+        List<TenantPlanResponse> tenantPlans = tenantPlanService.getAllTenantPlans();
         return ResponseEntity.ok(ApiResponse.success("Get tenant plans successfully", tenantPlans, httpServletRequest.getRequestURI()));
     }
 
     @GetMapping("/{tenantPlanId}")
-    public ResponseEntity<ApiResponse<TenantPlan>> getTenantPlanById(
+    public ResponseEntity<ApiResponse<TenantPlanResponse>> getTenantPlanById(
             @PathVariable("tenantPlanId") String tenantPlanId,
             HttpServletRequest httpServletRequest
     ) {
-        TenantPlan tenantPlan = tenantPlanService.findById(tenantPlanId)
-                .orElseThrow(() -> ResourceNotFoundException.byField("TenantPlan", "id", tenantPlanId));
+        TenantPlanResponse tenantPlan = tenantPlanService.getTenantPlanById(tenantPlanId);
 
         return ResponseEntity.ok(ApiResponse.success("Get tenant plan successfully", tenantPlan, httpServletRequest.getRequestURI()));
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<TenantPlan>> createTenantPlan(
-            @Valid @RequestBody TenantPlan request,
+    public ResponseEntity<ApiResponse<TenantPlanResponse>> createTenantPlan(
+            @Valid @RequestBody CreateTenantPlanRequest request,
             HttpServletRequest httpServletRequest
     ) {
-        // Prevent overwrite-by-id when creating new records.
-        request.setId(null);
-        TenantPlan created = tenantPlanService.save(request);
+        TenantPlanResponse created = tenantPlanService.createTenantPlan(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Create tenant plan successfully", created, httpServletRequest.getRequestURI()));
     }
 
     @PutMapping("/{tenantPlanId}")
-    public ResponseEntity<ApiResponse<TenantPlan>> updateTenantPlan(
+    public ResponseEntity<ApiResponse<TenantPlanResponse>> updateTenantPlan(
             @PathVariable("tenantPlanId") String tenantPlanId,
-            @Valid @RequestBody TenantPlan request,
+            @Valid @RequestBody UpdateTenantPlanRequest request,
             HttpServletRequest httpServletRequest
     ) {
-        tenantPlanService.findById(tenantPlanId)
-                .orElseThrow(() -> ResourceNotFoundException.byField("TenantPlan", "id", tenantPlanId));
-
-        request.setId(tenantPlanId);
-        TenantPlan updated = tenantPlanService.save(request);
+        TenantPlanResponse updated = tenantPlanService.updateTenantPlan(tenantPlanId, request);
 
         return ResponseEntity.ok(ApiResponse.success("Update tenant plan successfully", updated, httpServletRequest.getRequestURI()));
     }
@@ -76,10 +70,7 @@ public class TenantPlanController {
             @PathVariable("tenantPlanId") String tenantPlanId,
             HttpServletRequest httpServletRequest
     ) {
-        tenantPlanService.findById(tenantPlanId)
-                .orElseThrow(() -> ResourceNotFoundException.byField("TenantPlan", "id", tenantPlanId));
-
-        tenantPlanService.deleteById(tenantPlanId);
+        tenantPlanService.deleteTenantPlan(tenantPlanId);
         return ResponseEntity.ok(ApiResponse.success("Delete tenant plan successfully", httpServletRequest.getRequestURI()));
     }
 }
