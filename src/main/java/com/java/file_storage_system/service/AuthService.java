@@ -9,7 +9,9 @@ import com.java.file_storage_system.dto.user.changePassword.ChangePasswordReques
 
 public interface AuthService {
 
-    AuthTokens login(LoginRequest request);
+    LoginResult login(LoginRequest request);
+
+    AuthTokens issueTokens(CustomUserDetails principal);
 
     AuthTokens refresh(String refreshToken);
 
@@ -31,5 +33,34 @@ public interface AuthService {
             String username,
             String email
     ) {
+    }
+
+    record TwoFactorChallenge(
+            boolean requiresTwoFactor,
+            boolean twoFactorRequired,
+            boolean requireTwoFactor,
+            String userId,
+            String username,
+            String email,
+            String role,
+            String tenantId
+    ) {
+    }
+
+    record LoginResult(
+            AuthTokens tokens,
+            TwoFactorChallenge challenge
+    ) {
+        public static LoginResult token(AuthTokens tokens) {
+            return new LoginResult(tokens, null);
+        }
+
+        public static LoginResult challenge(TwoFactorChallenge challenge) {
+            return new LoginResult(null, challenge);
+        }
+
+        public boolean requiresTwoFactor() {
+            return challenge != null;
+        }
     }
 }

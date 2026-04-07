@@ -1,5 +1,6 @@
 package com.java.file_storage_system.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
@@ -35,6 +36,10 @@ public class UserEntity extends BaseEntity {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private TenantEntity tenant;
+
+    @JsonIgnore
+    @Column(name = "secretKey")
+    private String secretKey;
 
     @OneToMany(mappedBy = "owner", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude

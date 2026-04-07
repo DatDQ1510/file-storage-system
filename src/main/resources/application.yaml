@@ -72,6 +72,8 @@ app:
     refresh-cookie-name: ${REFRESH_COOKIE_NAME:refresh_token}
     refresh-cookie-secure: ${REFRESH_COOKIE_SECURE:false}
     refresh-cookie-same-site: ${REFRESH_COOKIE_SAME_SITE:Lax}
+    two-factor:
+      issuer: 8fG_xR2z9WpL0mN5vQeR4tY7uI8oP1aS # Change this to your app name for 2FA QR code;
 
 
 minio:

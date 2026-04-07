@@ -20,6 +20,10 @@ public class SystemAdminEntity extends BaseEntity {
     @Column(name = "hashPassword", nullable = false)
     private String hashedPassword;
 
+    @JsonIgnore
+    @Column(name = "secretKey")
+    private String secretKey;
+
     @Column(name= "email", unique = true, nullable = false)
     private String email;
 

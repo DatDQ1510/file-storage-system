@@ -1,5 +1,6 @@
 package com.java.file_storage_system.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -22,6 +23,10 @@ public class TenantAdminEntity extends BaseEntity {
 
     @Column(name = "hashPassword", nullable = false)
     private String hashedPassword;
+
+    @JsonIgnore
+    @Column(name = "secretKey")
+    private String secretKey;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tenantId", nullable = false)

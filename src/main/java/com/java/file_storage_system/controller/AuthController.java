@@ -12,6 +12,7 @@ import com.java.file_storage_system.exception.UnauthorizedException;
 import com.java.file_storage_system.payload.ApiResponse;
 import com.java.file_storage_system.service.AuthService;
 import com.java.file_storage_system.service.RolePermissionService;
+import com.java.file_storage_system.externalService.TwoFAService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final RolePermissionService rolePermissionService;
+        private final TwoFAService twoFAService;
 
     @Value("${app.security.refresh-cookie-name:refresh_token}")
     private String refreshCookieName;
@@ -51,26 +53,24 @@ public class AuthController {
     private String refreshCookieSameSite;
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<AuthTokenResponse>> login(
+    public ResponseEntity<ApiResponse<?>> login(
             @Valid @RequestBody LoginRequest request,
             HttpServletRequest httpServletRequest
     ) {
-        AuthService.AuthTokens tokens = authService.login(request);
-        UserRole role = UserRole.fromString(tokens.role());
+        AuthService.LoginResult loginResult = authService.login(request);
+        if (loginResult.requiresTwoFactor()) {
+            return ResponseEntity
+                    .status(HttpStatus.OK)
+                    .body(ApiResponse.success(
+                            "Two-factor authentication is required",
+                            loginResult.challenge(),
+                            httpServletRequest.getRequestURI()
+                    ));
+        }
 
+        AuthService.AuthTokens tokens = loginResult.tokens();
         ResponseCookie refreshCookie = buildRefreshCookie(tokens.refreshToken(), refreshExpirationMs);
-        AuthTokenResponse response = AuthTokenResponse.builder()
-                .accessToken(tokens.accessToken())
-                .tokenType("Bearer")
-                .expiresInMs(tokens.accessTokenExpiresInMs())
-                .role(tokens.role())
-                .tenantId(tokens.tenantId())
-                .userId(tokens.userId())
-                .username(tokens.username())
-                .email(tokens.email())
-                .redirectUrl(rolePermissionService.getRedirectUrlByRole(role))
-                .userDisplayName(tokens.username())
-                .build();
+        AuthTokenResponse response = buildAuthTokenResponse(tokens);
 
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -88,22 +88,9 @@ public class AuthController {
         }
 
         AuthService.AuthTokens tokens = authService.refresh(refreshToken);
-        UserRole role = UserRole.fromString(tokens.role());
-        
-        ResponseCookie refreshCookie = buildRefreshCookie(tokens.refreshToken(), refreshExpirationMs);
 
-        AuthTokenResponse response = AuthTokenResponse.builder()
-                .accessToken(tokens.accessToken())
-                .tokenType("Bearer")
-                .expiresInMs(tokens.accessTokenExpiresInMs())
-                .role(tokens.role())
-                .tenantId(tokens.tenantId())
-                .userId(tokens.userId())
-                .username(tokens.username())
-                .email(tokens.email())
-                .redirectUrl(rolePermissionService.getRedirectUrlByRole(role))
-                .userDisplayName(tokens.username())
-                .build();
+        ResponseCookie refreshCookie = buildRefreshCookie(tokens.refreshToken(), refreshExpirationMs);
+        AuthTokenResponse response = buildAuthTokenResponse(tokens);
 
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -173,6 +160,22 @@ public class AuthController {
                         throw new UnauthorizedException("Invalid authentication principal");
                 }
                 return principal;
+        }
+
+        private AuthTokenResponse buildAuthTokenResponse(AuthService.AuthTokens tokens) {
+                UserRole role = UserRole.fromString(tokens.role());
+                return AuthTokenResponse.builder()
+                                .accessToken(tokens.accessToken())
+                                .tokenType("Bearer")
+                                .expiresInMs(tokens.accessTokenExpiresInMs())
+                                .role(tokens.role())
+                                .tenantId(tokens.tenantId())
+                                .userId(tokens.userId())
+                                .username(tokens.username())
+                                .email(tokens.email())
+                                .redirectUrl(rolePermissionService.getRedirectUrlByRole(role))
+                                .userDisplayName(tokens.username())
+                                .build();
         }
 
     private ResponseCookie buildRefreshCookie(String value, long maxAgeMs) {

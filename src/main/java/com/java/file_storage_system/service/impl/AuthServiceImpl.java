@@ -1,5 +1,6 @@
 package com.java.file_storage_system.service.impl;
 
+import com.java.file_storage_system.constant.UserRole;
 import com.java.file_storage_system.custom.CustomUserDetails;
 import com.java.file_storage_system.custom.CustomUserDetailsService;
 import com.java.file_storage_system.custom.JwtTokenProvider;
@@ -60,7 +61,7 @@ public class AuthServiceImpl implements AuthService {
     private String mailFromAddress;
 
     @Override
-    public AuthTokens login(LoginRequest request) {
+    public LoginResult login(LoginRequest request) {
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -70,10 +71,19 @@ public class AuthServiceImpl implements AuthService {
             );
 
             CustomUserDetails principal = (CustomUserDetails) authentication.getPrincipal();
-            return issueTokens(principal);
+            if (hasTwoFactorEnabled(principal)) {
+                return LoginResult.challenge(buildTwoFactorChallenge(principal));
+            }
+
+            return LoginResult.token(issueTokens(principal));
         } catch (BadCredentialsException ex) {
             throw new UnauthorizedException("Invalid username/email or password");
         }
+    }
+
+    @Override
+    public AuthTokens issueTokens(CustomUserDetails principal) {
+        return issueTokensForPrincipal(principal);
     }
 
     @Override
@@ -133,6 +143,38 @@ public class AuthServiceImpl implements AuthService {
                 || tenantAdminRepository.findByEmailIgnoreCase(normalizedEmail).isPresent()
                 || systemAdminRepository.findByEmailIgnoreCase(normalizedEmail).isPresent();
     }
+
+        private boolean hasTwoFactorEnabled(CustomUserDetails principal) {
+        UserRole role = UserRole.fromString(principal.getRole());
+
+        return switch (role) {
+            case USER -> userRepository.findById(principal.getId())
+                .map(UserEntity::getSecretKey)
+                .map(this::isNotBlank)
+                .orElse(false);
+            case TENANT_ADMIN -> tenantAdminRepository.findById(principal.getId())
+                .map(TenantAdminEntity::getSecretKey)
+                .map(this::isNotBlank)
+                .orElse(false);
+            case SYSTEM_ADMIN -> systemAdminRepository.findById(principal.getId())
+                .map(SystemAdminEntity::getSecretKey)
+                .map(this::isNotBlank)
+                .orElse(false);
+        };
+        }
+
+        private TwoFactorChallenge buildTwoFactorChallenge(CustomUserDetails principal) {
+        return new TwoFactorChallenge(
+            true,
+            true,
+            true,
+            principal.getId(),
+            principal.getUsername(),
+            principal.getEmail(),
+            principal.getRole(),
+            principal.getTenantId()
+        );
+        }
 
     @Override
     @Transactional(readOnly = true)
@@ -196,7 +238,7 @@ public class AuthServiceImpl implements AuthService {
         return false;
     }
 
-    private AuthTokens issueTokens(CustomUserDetails principal) {
+    private AuthTokens issueTokensForPrincipal(CustomUserDetails principal) {
         String accessToken = jwtTokenProvider.generateAccessToken(principal);
         String newRefreshToken = jwtTokenProvider.generateRefreshToken(principal);
 
@@ -247,6 +289,10 @@ public class AuthServiceImpl implements AuthService {
 
     private String normalizeEmail(String email) {
         return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private boolean isNotBlank(String value) {
+        return value != null && !value.isBlank();
     }
 
     private String generate6DigitCode() {
