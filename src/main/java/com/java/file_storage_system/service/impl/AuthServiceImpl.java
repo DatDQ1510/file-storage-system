@@ -4,6 +4,7 @@ import com.java.file_storage_system.constant.UserRole;
 import com.java.file_storage_system.custom.CustomUserDetails;
 import com.java.file_storage_system.custom.CustomUserDetailsService;
 import com.java.file_storage_system.custom.JwtTokenProvider;
+import com.java.file_storage_system.dto.auth.AuthMeResponse;
 import com.java.file_storage_system.dto.auth.ForgotPasswordSendCodeRequest;
 import com.java.file_storage_system.dto.auth.ForgotPasswordVerifyCodeRequest;
 import com.java.file_storage_system.dto.auth.ForgotPasswordResetRequest;
@@ -34,7 +35,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.Locale;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.UUID;
+ import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @RequiredArgsConstructor
@@ -104,17 +106,17 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void changePassword(CustomUserDetails principal, ChangePasswordRequest request) {
-        String oldPassword = request.oldPassword();
+        String currentPassword = request.currentPassword();
         String newPassword = request.newPassword();
 
-        if (oldPassword.equals(newPassword)) {
+        if (currentPassword.equals(newPassword)) {
             throw new ConflictException("New password must be different from old password");
         }
 
         switch (principal.getRole()) {
-            case "SYSTEM_ADMIN" -> changeSystemAdminPassword(principal.getId(), oldPassword, newPassword);
-            case "TENANT_ADMIN" -> changeTenantAdminPassword(principal.getId(), oldPassword, newPassword);
-            case "USER" -> changeUserPassword(principal.getId(), oldPassword, newPassword);
+            case "SYSTEM_ADMIN" -> changeSystemAdminPassword(principal.getId(), currentPassword, newPassword);
+            case "TENANT_ADMIN" -> changeTenantAdminPassword(principal.getId(), currentPassword, newPassword);
+            case "USER" -> changeUserPassword(principal.getId(), currentPassword, newPassword);
             default -> throw new UnauthorizedException("Unsupported account role");
         }
     }
@@ -213,6 +215,29 @@ public class AuthServiceImpl implements AuthService {
         redisTemplate.delete(getForgotPasswordMarkerKey(normalizedEmail));
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public AuthMeResponse getBasicUserInfoById(UUID userId) {
+        String id = userId.toString();
+
+        UserEntity user = userRepository.findById(id).orElse(null);
+        if (user != null) {
+            return new AuthMeResponse(user.getId(), user.getUserName(), user.getEmail());
+        }
+
+        TenantAdminEntity tenantAdmin = tenantAdminRepository.findById(id).orElse(null);
+        if (tenantAdmin != null) {
+            return new AuthMeResponse(tenantAdmin.getId(), tenantAdmin.getUserName(), tenantAdmin.getEmail());
+        }
+
+        SystemAdminEntity systemAdmin = systemAdminRepository.findById(id).orElse(null);
+        if (systemAdmin != null) {
+            return new AuthMeResponse(systemAdmin.getId(), systemAdmin.getUserName(), systemAdmin.getEmail());
+        }
+
+        throw ResourceNotFoundException.byField("User", "id", id);
+    }
+
     private boolean updateForgotPasswordForAccountByEmail(String normalizedEmail, String encodedPassword) {
         UserEntity user = userRepository.findByEmailIgnoreCase(normalizedEmail).orElse(null);
         if (user != null) {
@@ -254,35 +279,35 @@ public class AuthServiceImpl implements AuthService {
         );
     }
 
-    private void changeSystemAdminPassword(String systemAdminId, String oldPassword, String newPassword) {
+    private void changeSystemAdminPassword(String systemAdminId, String currentPassword, String newPassword) {
         SystemAdminEntity account = systemAdminRepository.findById(systemAdminId)
                 .orElseThrow(() -> new ResourceNotFoundException("System admin not found with id: " + systemAdminId));
 
-        validateOldPassword(account.getHashedPassword(), oldPassword);
+        validateOldPassword(account.getHashedPassword(), currentPassword);
         account.setHashedPassword(passwordEncoder.encode(newPassword));
         systemAdminRepository.save(account);
     }
 
-    private void changeTenantAdminPassword(String tenantAdminId, String oldPassword, String newPassword) {
+    private void changeTenantAdminPassword(String tenantAdminId, String currentPassword, String newPassword) {
         TenantAdminEntity account = tenantAdminRepository.findById(tenantAdminId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tenant admin not found with id: " + tenantAdminId));
 
-        validateOldPassword(account.getHashedPassword(), oldPassword);
+        validateOldPassword(account.getHashedPassword(), currentPassword);
         account.setHashedPassword(passwordEncoder.encode(newPassword));
         tenantAdminRepository.save(account);
     }
 
-    private void changeUserPassword(String userId, String oldPassword, String newPassword) {
+    private void changeUserPassword(String userId, String currentPassword, String newPassword) {
         UserEntity account = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
-        validateOldPassword(account.getHashedPassword(), oldPassword);
+        validateOldPassword(account.getHashedPassword(), currentPassword);
         account.setHashedPassword(passwordEncoder.encode(newPassword));
         userRepository.save(account);
     }
 
-    private void validateOldPassword(String storedHash, String oldPassword) {
-        if (!passwordEncoder.matches(oldPassword, storedHash)) {
+    private void validateOldPassword(String storedHash, String currentPassword) {
+        if (!passwordEncoder.matches(currentPassword, storedHash)) {
             throw new UnauthorizedException("Old password is incorrect");
         }
     }

@@ -5,7 +5,10 @@ import com.java.file_storage_system.dto.auth.ForgotPasswordResetRequest;
 import com.java.file_storage_system.dto.auth.ForgotPasswordSendCodeRequest;
 import com.java.file_storage_system.dto.auth.ForgotPasswordVerifyCodeRequest;
 import com.java.file_storage_system.dto.auth.LoginRequest;
+import com.java.file_storage_system.dto.auth.AuthMeResponse;
 import com.java.file_storage_system.dto.user.changePassword.ChangePasswordRequest;
+
+import java.util.UUID;
 
 public interface AuthService {
 
@@ -22,6 +25,8 @@ public interface AuthService {
     void verifyForgotPasswordCode(ForgotPasswordVerifyCodeRequest request);
 
     void resetForgotPassword(ForgotPasswordResetRequest request);
+
+    AuthMeResponse getBasicUserInfoById(UUID userId);
 
     record AuthTokens(
             String accessToken,

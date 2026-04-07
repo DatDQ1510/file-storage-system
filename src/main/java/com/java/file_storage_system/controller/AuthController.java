@@ -7,12 +7,12 @@ import com.java.file_storage_system.dto.auth.ForgotPasswordResetRequest;
 import com.java.file_storage_system.dto.auth.ForgotPasswordSendCodeRequest;
 import com.java.file_storage_system.dto.auth.ForgotPasswordVerifyCodeRequest;
 import com.java.file_storage_system.dto.auth.LoginRequest;
+import com.java.file_storage_system.dto.auth.AuthMeResponse;
 import com.java.file_storage_system.dto.user.changePassword.ChangePasswordRequest;
 import com.java.file_storage_system.exception.UnauthorizedException;
 import com.java.file_storage_system.payload.ApiResponse;
 import com.java.file_storage_system.service.AuthService;
 import com.java.file_storage_system.service.RolePermissionService;
-import com.java.file_storage_system.externalService.TwoFAService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,14 +22,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.CookieValue;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
+import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -38,7 +34,6 @@ public class AuthController {
 
     private final AuthService authService;
     private final RolePermissionService rolePermissionService;
-        private final TwoFAService twoFAService;
 
     @Value("${app.security.refresh-cookie-name:refresh_token}")
     private String refreshCookieName;
@@ -155,28 +150,54 @@ public class AuthController {
         );
     }
 
-        private CustomUserDetails extractPrincipal(Authentication authentication) {
-                if (authentication == null || !(authentication.getPrincipal() instanceof CustomUserDetails principal)) {
-                        throw new UnauthorizedException("Invalid authentication principal");
-                }
-                return principal;
-        }
+    @GetMapping("/me/{id}")
+    public ResponseEntity<ApiResponse<AuthMeResponse>> me(
+            @PathVariable("id") UUID userId,
+            HttpServletRequest httpServletRequest
+    ) {
+        AuthMeResponse response = authService.getBasicUserInfoById(userId);
+        return ResponseEntity.ok(
+                ApiResponse.success("Get user info successfully", response, httpServletRequest.getRequestURI())
+        );
+    }
 
-        private AuthTokenResponse buildAuthTokenResponse(AuthService.AuthTokens tokens) {
-                UserRole role = UserRole.fromString(tokens.role());
-                return AuthTokenResponse.builder()
-                                .accessToken(tokens.accessToken())
-                                .tokenType("Bearer")
-                                .expiresInMs(tokens.accessTokenExpiresInMs())
-                                .role(tokens.role())
-                                .tenantId(tokens.tenantId())
-                                .userId(tokens.userId())
-                                .username(tokens.username())
-                                .email(tokens.email())
-                                .redirectUrl(rolePermissionService.getRedirectUrlByRole(role))
-                                .userDisplayName(tokens.username())
-                                .build();
-        }
+
+    @PatchMapping("/profile")
+    public ResponseEntity<ApiResponse<AuthMeResponse>> profile(
+            Authentication authentication,
+            HttpServletRequest httpServletRequest
+    ) {
+        CustomUserDetails principal = extractPrincipal(authentication);
+        UUID userId = UUID.fromString(principal.getId());
+        AuthMeResponse response = authService.getBasicUserInfoById(userId);
+        return ResponseEntity.ok(
+                ApiResponse.success("Get user info successfully", response, httpServletRequest.getRequestURI())
+        );
+    }
+
+
+    private CustomUserDetails extractPrincipal(Authentication authentication) {
+            if (authentication == null || !(authentication.getPrincipal() instanceof CustomUserDetails principal)) {
+                throw new UnauthorizedException("Invalid authentication principal");
+            }
+            return principal;
+    }
+
+    private AuthTokenResponse buildAuthTokenResponse(AuthService.AuthTokens tokens) {
+            UserRole role = UserRole.fromString(tokens.role());
+            return AuthTokenResponse.builder()
+                            .accessToken(tokens.accessToken())
+                            .tokenType("Bearer")
+                            .expiresInMs(tokens.accessTokenExpiresInMs())
+                            .role(tokens.role())
+                            .tenantId(tokens.tenantId())
+                            .userId(tokens.userId())
+                            .username(tokens.username())
+                            .email(tokens.email())
+                            .redirectUrl(rolePermissionService.getRedirectUrlByRole(role))
+                            .userDisplayName(tokens.username())
+                            .build();
+    }
 
     private ResponseCookie buildRefreshCookie(String value, long maxAgeMs) {
         return ResponseCookie.from(refreshCookieName, value)
