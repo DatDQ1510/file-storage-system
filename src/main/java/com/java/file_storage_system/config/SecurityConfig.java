@@ -85,11 +85,6 @@ public class SecurityConfig {
                             "/api/v1/payments/webhook"
                         ).permitAll()
                         .requestMatchers("/api/v1/system-admins/bootstrap").permitAll()
-                        .requestMatchers("/api/v1/system-admins/**").hasRole("SYSTEM_ADMIN")
-                        .requestMatchers("/api/v1/tenant-admins/**").hasRole("SYSTEM_ADMIN")
-                        .requestMatchers("/api/v1/subscription-plans/**").hasRole("SYSTEM_ADMIN")
-                        .requestMatchers("/api/v1/users/search").hasRole("TENANT_ADMIN")
-                        .requestMatchers("/api/v1/users/tenant-admin/**").hasRole("TENANT_ADMIN")
                         .anyRequest().authenticated()
                 );
 

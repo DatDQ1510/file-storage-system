@@ -28,6 +28,9 @@ public class TenantAdminEntity extends BaseEntity {
     @Column(name = "secretKey")
     private String secretKey;
 
+    @Column(name = "phoneNumber", unique = true, nullable = false)
+    private String phoneNumber;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tenantId", nullable = false)
     @ToString.Exclude

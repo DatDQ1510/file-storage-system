@@ -3,6 +3,7 @@ package com.java.file_storage_system.entity;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.java.file_storage_system.constant.BillingCycle;
+import com.java.file_storage_system.constant.PlanStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
@@ -51,8 +52,13 @@ public class SubscriptionPlanEntity extends BaseEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     private JsonNode features; // JSON object to store additional features and limits
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "planStatus")
+    private PlanStatus planStatus;
+
     @OneToMany(mappedBy = "plan", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private List<TenantPlan> tenantPlans = new ArrayList<>();
+
 }

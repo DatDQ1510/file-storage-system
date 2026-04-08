@@ -27,9 +27,6 @@ public class TenantServiceImpl extends BaseServiceImpl<TenantEntity, TenantRepos
         String normalizedName = normalize(request.getNameTenant());
         String normalizedDomain = normalize(request.getDomainTenant());
 
-        if (tenantRepository.existsByNameTenant(normalizedName)) {
-            throw ConflictException.alreadyExists("Tenant", "nameTenant", normalizedName);
-        }
         if (tenantRepository.existsByDomainTenant(normalizedDomain)) {
             throw ConflictException.alreadyExists("Tenant", "domainTenant", normalizedDomain);
         }
@@ -52,9 +49,6 @@ public class TenantServiceImpl extends BaseServiceImpl<TenantEntity, TenantRepos
         String normalizedName = normalize(request.getNameTenant());
         String normalizedDomain = normalize(request.getDomainTenant());
 
-        if (tenantRepository.existsByNameTenantAndIdNot(normalizedName, tenantId)) {
-            throw ConflictException.alreadyExists("Tenant", "nameTenant", normalizedName);
-        }
         if (tenantRepository.existsByDomainTenantAndIdNot(normalizedDomain, tenantId)) {
             throw ConflictException.alreadyExists("Tenant", "domainTenant", normalizedDomain);
         }
@@ -66,6 +60,11 @@ public class TenantServiceImpl extends BaseServiceImpl<TenantEntity, TenantRepos
         tenant.setStatusTenant(request.getStatusTenant());
 
         return tenantRepository.save(tenant);
+    }
+
+    @Override
+    public boolean existsByDomainTenant(String domainTenant) {
+        return tenantRepository.existsByDomainTenant(normalize(domainTenant));
     }
 
     private String normalize(String value) {

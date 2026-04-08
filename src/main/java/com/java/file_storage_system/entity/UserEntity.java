@@ -41,6 +41,9 @@ public class UserEntity extends BaseEntity {
     @Column(name = "secretKey")
     private String secretKey;
 
+    @Column(name = "phoneNumber")
+    private String phoneNumber;
+
     @OneToMany(mappedBy = "owner", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
     @EqualsAndHashCode.Exclude

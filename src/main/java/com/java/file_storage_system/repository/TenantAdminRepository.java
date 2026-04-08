@@ -12,6 +12,8 @@ public interface TenantAdminRepository extends BaseRepository<TenantAdminEntity>
 
 	boolean existsByEmailIgnoreCase(String email);
 
+	boolean existsByPhoneNumber(String phoneNumber);
+
 	Optional<TenantAdminEntity> findByUserNameIgnoreCase(String userName);
 
 	Optional<TenantAdminEntity> findByEmailIgnoreCase(String email);

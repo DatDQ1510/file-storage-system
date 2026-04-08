@@ -9,4 +9,6 @@ public interface TenantService extends BaseService<TenantEntity> {
 	TenantEntity createTenant(CreateTenantRequest request);
 
 	TenantEntity updateTenant(String tenantId, UpdateTenantRequest request);
+
+	boolean existsByDomainTenant(String domainTenant);
 }

@@ -2,6 +2,8 @@ package com.java.file_storage_system.controller;
 
 import com.java.file_storage_system.dto.systemAdmin.create.CreateSystemAdminRequest;
 import com.java.file_storage_system.dto.systemAdmin.create.SystemAdminCreatedResponse;
+import com.java.file_storage_system.dto.systemAdmin.initial.CreateInitialTenantSetupRequest;
+import com.java.file_storage_system.dto.systemAdmin.initial.InitialTenantSetupResponse;
 import com.java.file_storage_system.payload.ApiResponse;
 import com.java.file_storage_system.service.SystemAdminService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -52,6 +54,22 @@ public class SystemAdminController {
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success(
                         "SystemAdmin created successfully",
+                        created,
+                        httpServletRequest.getRequestURI()
+                ));
+    }
+
+    @PostMapping("/create-initial")
+    public ResponseEntity<ApiResponse<InitialTenantSetupResponse>> createInitialTenantSetup(
+            @Valid @RequestBody CreateInitialTenantSetupRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        InitialTenantSetupResponse created = systemAdminService.createInitialTenantSetup(request);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(ApiResponse.success(
+                        "Initial tenant setup created successfully",
                         created,
                         httpServletRequest.getRequestURI()
                 ));

@@ -222,17 +222,32 @@ public class AuthServiceImpl implements AuthService {
 
         UserEntity user = userRepository.findById(id).orElse(null);
         if (user != null) {
-            return new AuthMeResponse(user.getId(), user.getUserName(), user.getEmail());
+            return new AuthMeResponse(
+                    user.getId(),
+                    user.getUserName(),
+                    user.getEmail(),
+                    isNotBlank(user.getSecretKey())
+            );
         }
 
         TenantAdminEntity tenantAdmin = tenantAdminRepository.findById(id).orElse(null);
         if (tenantAdmin != null) {
-            return new AuthMeResponse(tenantAdmin.getId(), tenantAdmin.getUserName(), tenantAdmin.getEmail());
+            return new AuthMeResponse(
+                    tenantAdmin.getId(),
+                    tenantAdmin.getUserName(),
+                    tenantAdmin.getEmail(),
+                    isNotBlank(tenantAdmin.getSecretKey())
+            );
         }
 
         SystemAdminEntity systemAdmin = systemAdminRepository.findById(id).orElse(null);
         if (systemAdmin != null) {
-            return new AuthMeResponse(systemAdmin.getId(), systemAdmin.getUserName(), systemAdmin.getEmail());
+            return new AuthMeResponse(
+                    systemAdmin.getId(),
+                    systemAdmin.getUserName(),
+                    systemAdmin.getEmail(),
+                    isNotBlank(systemAdmin.getSecretKey())
+            );
         }
 
         throw ResourceNotFoundException.byField("User", "id", id);
