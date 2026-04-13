@@ -93,7 +93,7 @@ public class AuthController {
                 .body(ApiResponse.success("Refresh token successfully", response, httpServletRequest.getRequestURI()));
     }
 
-    @PostMapping("/logout")
+    @PostMapping("/sign-out")
     public ResponseEntity<ApiResponse<String>> logout(HttpServletRequest httpServletRequest) {
         ResponseCookie clearCookie = buildRefreshCookie("", 0L);
 
