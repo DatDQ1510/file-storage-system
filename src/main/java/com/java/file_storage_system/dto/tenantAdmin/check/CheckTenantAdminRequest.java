@@ -12,8 +12,8 @@ public record CheckTenantAdminRequest(
         @Email(message = "email is invalid")
         String email,
 
-        @NotBlank(message = "sdt is required")
-        @JsonProperty("sdt")
+        @NotBlank(message = "phone number is required")
+        @JsonProperty("phoneNumber")
         String phoneNumber
 ) {
 }

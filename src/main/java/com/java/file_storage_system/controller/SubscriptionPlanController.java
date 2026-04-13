@@ -9,6 +9,7 @@ import com.java.file_storage_system.service.SubscriptionPlanService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -25,6 +26,7 @@ import java.util.List;
 @AllArgsConstructor
 @RestController
 @RequestMapping("/api/v1/subscription-plans")
+@Slf4j
 public class SubscriptionPlanController {
 
     private final SubscriptionPlanService subscriptionPlanService;
@@ -53,9 +55,21 @@ public class SubscriptionPlanController {
             @Valid @RequestBody SubscriptionPlanRequest request,
             HttpServletRequest httpServletRequest
     ) {
+        log.info("Create subscription plan request: namePlan={}, price={}, billingCycle={}, maxUsers={}, baseStorageLimit={}, features={}",
+                request.namePlan(),
+                request.price(),
+                request.billingCycle(),
+                request.maxUsers(),
+                request.baseStorageLimit(),
+                request.features()
+        );
+
         SubscriptionPlanResponse created = subscriptionPlanMapper.toResponse(
                 subscriptionPlanService.save(subscriptionPlanMapper.toEntity(request))
         );
+
+        log.info("Subscription plan created successfully: id={}, namePlan={}", created.id(), created.namePlan());
+
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Create subscription plan successfully", created, httpServletRequest.getRequestURI()));
     }

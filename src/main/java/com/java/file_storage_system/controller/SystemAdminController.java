@@ -9,6 +9,7 @@ import com.java.file_storage_system.service.SystemAdminService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@Slf4j
 @AllArgsConstructor
 @RestController
 @RequestMapping("/api/v1/system-admins")
@@ -64,7 +66,22 @@ public class SystemAdminController {
             @Valid @RequestBody CreateInitialTenantSetupRequest request,
             HttpServletRequest httpServletRequest
     ) {
+        log.info("Create initial tenant setup request: nameTenant={}, subdomain={}, username={}, email={}, phoneNumber={}, planId={}",
+                request.nameTenant(),
+                request.subdomain(),
+                request.username(),
+                request.email(),
+                request.phoneNumber(),
+                request.planId()
+        );
+
         InitialTenantSetupResponse created = systemAdminService.createInitialTenantSetup(request);
+
+        log.info("Initial tenant setup created successfully: tenantId={}, tenantAdminId={}, tenantPlanId={}",
+                created.tenantId(),
+                created.tenantAdminId(),
+                created.tenantPlanId()
+        );
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)

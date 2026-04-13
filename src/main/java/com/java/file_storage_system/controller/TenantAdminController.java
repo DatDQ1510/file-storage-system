@@ -42,13 +42,13 @@ public class TenantAdminController {
     public ResponseEntity<ApiResponse<CheckTenantAdminResponse>> checkTenantAdmin(
                 @RequestParam("username") @NotBlank(message = "username is required") String username,
                 @RequestParam("email") @NotBlank(message = "email is required") String email,
-                @RequestParam("sdt") @NotBlank(message = "sdt is required") String sdt,
+                @RequestParam("phoneNumber") @NotBlank(message = "phone number is required") String phoneNumber,
         HttpServletRequest httpServletRequest
     ) {
-                CheckTenantAdminResponse checkResult = tenantAdminService.checkTenantAdmin(username, email, sdt);
+                CheckTenantAdminResponse checkResult = tenantAdminService.checkTenantAdmin(username, email, phoneNumber );
         String message = checkResult.available()
-                ? "Email and sdt are available"
-                : "Email or sdt already exists";
+                ? "Email and phone number are available"
+                : "Email or phone number already exists";
 
         return ResponseEntity.ok(
                 ApiResponse.success(message, checkResult, httpServletRequest.getRequestURI())

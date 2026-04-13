@@ -1,5 +1,6 @@
 package com.java.file_storage_system.dto.systemAdmin.initial;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -20,8 +21,9 @@ public record CreateInitialTenantSetupRequest(
         @Size(max = 255, message = "email must be at most 255 characters")
         String email,
 
-        @NotBlank(message = "sdt is required")
-        String sdt,
+        @JsonAlias({"sdt"})
+        @NotBlank(message = "phoneNumber is required")
+        String phoneNumber,
 
         @NotBlank(message = "planId is required")
         String planId

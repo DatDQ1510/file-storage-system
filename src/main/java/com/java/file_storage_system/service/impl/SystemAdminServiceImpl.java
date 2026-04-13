@@ -74,7 +74,7 @@ public class SystemAdminServiceImpl extends BaseServiceImpl<SystemAdminEntity, S
         String normalizedSubdomain = normalizeToLower(request.subdomain());
         String normalizedUserName = normalizeToLower(request.username());
         String normalizedEmail = normalizeToLower(request.email());
-        String normalizedPhone = normalize(request.sdt());
+        String normalizedPhone = normalize(request.phoneNumber());
 
         if (tenantRepository.existsByDomainTenant(normalizedSubdomain)) {
             throw ConflictException.alreadyExists("Tenant", "domainTenant", normalizedSubdomain);
