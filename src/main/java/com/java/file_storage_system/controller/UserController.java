@@ -1,5 +1,8 @@
 package com.java.file_storage_system.controller;
 
+import com.java.file_storage_system.constant.UserRole;
+import com.java.file_storage_system.custom.RequireRole;
+import com.java.file_storage_system.dto.user.allUser.AllUserPageResponse;
 import com.java.file_storage_system.dto.user.createUser.CreateTenantUserRequest;
 import com.java.file_storage_system.dto.user.createUser.UserCreatedResponse;
 import com.java.file_storage_system.dto.user.changePassword.ResetUserPasswordByTenantAdminRequest;
@@ -14,6 +17,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -28,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.validation.annotation.Validated;
 
 @AllArgsConstructor
+@Slf4j
 @Validated
 @RestController
 @RequestMapping("/api/v1/users")
@@ -35,8 +40,47 @@ public class UserController {
 
 	private final UserService userService;
 
+	@GetMapping
+	@RequireRole(UserRole.TENANT_ADMIN)
+	public ResponseEntity<ApiResponse<AllUserPageResponse>> getAllUsers(
+			Authentication authentication,
+			@RequestParam(value = "page", defaultValue = "0") @Min(0) int page,
+			@RequestParam(value = "offset", defaultValue = "10") @Min(1) int offset,
+			HttpServletRequest httpServletRequest
+	) {
+		CustomUserDetails principal = extractPrincipal(authentication);
+		String tenantId = principal.getTenantId();
 
-	@PostMapping("/tenant-admin/register")
+		if (tenantId == null || tenantId.isBlank()) {
+			throw new ForbiddenException("Tenant scope is required for listing users");
+		}
+
+		log.info(
+			"GET /users called with tenantId={}, page={}, offset={}, path={}",
+			tenantId,
+			page,
+			offset,
+			httpServletRequest.getRequestURI()
+		);
+
+		AllUserPageResponse users = userService.getAllUsersInTenant(tenantId, page, offset);
+
+		log.info(
+			"GET /users success with tenantId={}, page={}, offset={}, totalElements={}, totalPages={}, returnedItems={}",
+			tenantId,
+			users.page(),
+			users.offset(),
+			users.totalElements(),
+			users.totalPages(),
+			users.items().size()
+		);
+
+		return ResponseEntity.ok(ApiResponse.success("Get users successfully", users, httpServletRequest.getRequestURI()));
+	}
+
+
+	@PostMapping
+	@RequireRole(UserRole.TENANT_ADMIN)
 	public ResponseEntity<ApiResponse<UserCreatedResponse>> registerUserByTenantAdmin(
 			Authentication authentication,
 			@Valid @RequestBody CreateTenantUserRequest request,
@@ -44,7 +88,21 @@ public class UserController {
 	) {
 		CustomUserDetails principal = extractPrincipal(authentication);
 		String tenantAdminId = principal.getId();
+		log.info(
+			"Create user request received: tenantAdminId={}, tenantId={}, userName={}, email={}",
+			tenantAdminId,
+			principal.getTenantId(),
+			request.getUserName(),
+			request.getEmail()
+		);
 		UserCreatedResponse createdUser = userService.createUserByTenantAdmin(tenantAdminId, request);
+		log.info(
+			"Create user success: tenantAdminId={}, userId={}, userName={}, tenantId={}",
+			tenantAdminId,
+			createdUser.getId(),
+			createdUser.getUserName(),
+			createdUser.getTenantId()
+		);
 
 		return ResponseEntity
 				.status(HttpStatus.CREATED)
@@ -55,7 +113,8 @@ public class UserController {
 				));
 	}
 
-	@PatchMapping("/tenant-admin/{userId}/password")
+	@PatchMapping("reset-password")
+	@RequireRole(UserRole.TENANT_ADMIN)
 	public ResponseEntity<ApiResponse<String>> resetUserPasswordByTenantAdmin(
 			Authentication authentication,
 			@PathVariable("userId") String userId,

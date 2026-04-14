@@ -15,14 +15,26 @@ public interface UserRepository extends BaseRepository<UserEntity> {
 	@Query("select count(u) from UserEntity u where u.tenant.id = :tenantId")
 	long countByTenantId(@Param("tenantId") String tenantId);
 
-	boolean existsByEmail(String email);
+	@Query("""
+			select u
+			from UserEntity u
+			where u.tenant.id = :tenantId
+			order by u.createdAt desc
+			""")
+	Page<UserEntity> findAllByTenantId(
+			@Param("tenantId") String tenantId,
+			Pageable pageable
+	);
+
+	@Query("select (count(u) > 0) from UserEntity u where lower(u.email) = lower(:email)")
+	boolean existsByEmailIgnoreCase(@Param("email") String email);
 
 	Optional<UserEntity> findByEmailIgnoreCase(String email);
 
 	Optional<UserEntity> findByUserNameIgnoreCase(String userName);
 
-	@Query("select (count(u) > 0) from UserEntity u where u.userName = :userName and u.tenant.id = :tenantId")
-	boolean existsByUserNameAndTenantId(@Param("userName") String userName, @Param("tenantId") String tenantId);
+	@Query("select (count(u) > 0) from UserEntity u where lower(u.userName) = lower(:userName) and u.tenant.id = :tenantId")
+	boolean existsByUserNameIgnoreCaseAndTenantId(@Param("userName") String userName, @Param("tenantId") String tenantId);
 
 	@Query("""
 			select u

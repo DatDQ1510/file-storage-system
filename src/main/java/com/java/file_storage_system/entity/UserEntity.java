@@ -1,6 +1,7 @@
 package com.java.file_storage_system.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.java.file_storage_system.constant.UserStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
@@ -43,6 +44,12 @@ public class UserEntity extends BaseEntity {
 
     @Column(name = "phoneNumber")
     private String phoneNumber;
+
+    @Column(name = "department")
+    private String department;
+
+    @Column(name = "statusUser")
+    private UserStatus statusUser;
 
     @OneToMany(mappedBy = "owner", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude

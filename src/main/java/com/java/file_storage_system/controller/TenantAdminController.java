@@ -38,7 +38,7 @@ public class TenantAdminController {
                 ));
     }
 
-    @GetMapping("/check-tenantadmin")
+    @GetMapping("/check-tenantAdmin")
     public ResponseEntity<ApiResponse<CheckTenantAdminResponse>> checkTenantAdmin(
                 @RequestParam("username") @NotBlank(message = "username is required") String username,
                 @RequestParam("email") @NotBlank(message = "email is required") String email,
