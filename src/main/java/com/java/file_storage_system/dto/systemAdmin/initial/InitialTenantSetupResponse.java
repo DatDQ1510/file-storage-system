@@ -10,7 +10,6 @@ public record InitialTenantSetupResponse(
         String tenantPlanId,
         String planId,
         LocalDateTime tenantPlanStartDate,
-        LocalDateTime tenantPlanEndDate,
-        String generatedTenantAdminPassword
-) {
+        LocalDateTime tenantPlanEndDate
+    ) {
 }

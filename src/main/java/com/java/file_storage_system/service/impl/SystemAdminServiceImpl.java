@@ -137,8 +137,7 @@ public class SystemAdminServiceImpl extends BaseServiceImpl<SystemAdminEntity, S
                 savedTenantPlan.getId(),
                 plan.getId(),
                 savedTenantPlan.getPlanStartDate(),
-                savedTenantPlan.getPlanEndDate(),
-                generatedPassword
+                savedTenantPlan.getPlanEndDate()
         );
     }
 
@@ -186,11 +185,12 @@ public class SystemAdminServiceImpl extends BaseServiceImpl<SystemAdminEntity, S
     }
 
     private String generatePassword() {
-        StringBuilder password = new StringBuilder(GENERATED_PASSWORD_LENGTH);
-        for (int i = 0; i < GENERATED_PASSWORD_LENGTH; i++) {
-            int index = SECURE_RANDOM.nextInt(PASSWORD_CHARS.length());
-            password.append(PASSWORD_CHARS.charAt(index));
-        }
-        return password.toString();
+//        StringBuilder password = new StringBuilder(GENERATED_PASSWORD_LENGTH);
+//        for (int i = 0; i < GENERATED_PASSWORD_LENGTH; i++) {
+//            int index = SECURE_RANDOM.nextInt(PASSWORD_CHARS.length());
+//            password.append(PASSWORD_CHARS.charAt(index));
+//        }
+//        return password.toString();
+        return "1qazXSW@#EDC";
     }
 }

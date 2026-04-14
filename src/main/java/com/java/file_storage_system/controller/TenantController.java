@@ -2,6 +2,7 @@ package com.java.file_storage_system.controller;
 
 import com.java.file_storage_system.constant.UserRole;
 import com.java.file_storage_system.custom.RequireRole;
+import com.java.file_storage_system.dto.tenant.AllTenantPageResponse;
 import com.java.file_storage_system.dto.tenant.CreateTenantRequest;
 import com.java.file_storage_system.dto.tenant.TenantResponse;
 import com.java.file_storage_system.dto.tenant.UpdateTenantRequest;
@@ -11,8 +12,10 @@ import com.java.file_storage_system.payload.ApiResponse;
 import com.java.file_storage_system.service.TenantService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -26,9 +29,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
 @Validated
+@Slf4j
 @AllArgsConstructor
 @RestController
 @RequestMapping("/api/v1/tenants")
@@ -38,9 +40,22 @@ public class TenantController {
 
     @GetMapping
 	@RequireRole(UserRole.SYSTEM_ADMIN)
-	public ResponseEntity<ApiResponse<List<TenantResponse>>> getAllTenants(HttpServletRequest httpServletRequest) {
-	List<TenantResponse> tenants = tenantService.findAll().stream().map(this::mapToResponse).toList();
-	return ResponseEntity.ok(ApiResponse.success("Get tenants successfully", tenants, httpServletRequest.getRequestURI()));
+	public ResponseEntity<ApiResponse<AllTenantPageResponse>> getAllTenants(
+		@RequestParam(value = "page", defaultValue = "0") @Min(0) int page,
+		@RequestParam(value = "offset", defaultValue = "10") @Min(1) int offset,
+		HttpServletRequest httpServletRequest
+	) {
+		log.info("GET /tenants called with page={}, offset={}, path={}", page, offset, httpServletRequest.getRequestURI());
+		AllTenantPageResponse tenants = tenantService.getAllTenants(page, offset);
+		log.info(
+			"GET /tenants success with page={}, offset={}, totalElements={}, totalPages={}, returnedItems={}",
+			tenants.page(),
+			tenants.offset(),
+			tenants.totalElements(),
+			tenants.totalPages(),
+			tenants.items().size()
+		);
+		return ResponseEntity.ok(ApiResponse.success("Get tenants successfully", tenants, httpServletRequest.getRequestURI()));
     }
 
     @GetMapping("/{tenantId}")
