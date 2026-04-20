@@ -1,8 +1,9 @@
 package com.java.file_storage_system.service.impl;
 
 import com.java.file_storage_system.constant.MessageConstants;
-import com.java.file_storage_system.dto.project.ProjectRequest;
+import com.java.file_storage_system.constant.ProjectStatus;
 import com.java.file_storage_system.dto.project.ProjectPageResponse;
+import com.java.file_storage_system.dto.project.ProjectRequest;
 import com.java.file_storage_system.dto.project.ProjectResponse;
 import com.java.file_storage_system.dto.project.member.AddProjectMemberRequest;
 import com.java.file_storage_system.dto.project.member.ProjectMemberResponse;
@@ -67,6 +68,7 @@ public class ProjectServiceImpl extends BaseServiceImpl<ProjectEntity, ProjectRe
         // 5. Tạo project
         ProjectEntity project = new ProjectEntity();
         project.setNameProject(request.nameProject());
+        project.setStatus(ProjectStatus.ACTIVE);
         project.setOwner(owner);
         project.setTenant(tenantAdmin.getTenant());
         project.setTenantAdmin(tenantAdmin);
@@ -106,10 +108,12 @@ public class ProjectServiceImpl extends BaseServiceImpl<ProjectEntity, ProjectRe
     }
 
     @Override
-    public ProjectResponse getProjectById(String projectId) {
+    public ProjectResponse getProjectById(String projectId, String currentUserId, String currentUserRole, String currentTenantId) {
         ProjectEntity project = repository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException(MessageConstants.PROJECT_NOT_FOUND));
-        return mapToResponse(project);
+
+        validateProjectAccess(project, currentUserId, currentUserRole, currentTenantId);
+        return mapToResponse(project, currentUserId, currentUserRole, currentTenantId);
     }
 
     @Override
@@ -128,12 +132,36 @@ public class ProjectServiceImpl extends BaseServiceImpl<ProjectEntity, ProjectRe
     }
 
     @Override
+    public ProjectPageResponse getAllProjectsByUser(String userId, int page, int size) {
+        getOwner(userId);
+
+        int normalizedPage = Math.max(0, page);
+        int normalizedSize = Math.max(1, Math.min(size, 100));
+
+        Page<ProjectEntity> projectPage = repository.findAllByOwnerIdOrMemberUserId(
+                userId,
+                ProjectStatus.ACTIVE,
+                PageRequest.of(normalizedPage, normalizedSize)
+        );
+
+        return mapToPageResponse(projectPage);
+    }
+
+    @Override
     public ProjectPageResponse searchProjectsByTenantAdmin(String tenantAdminId, String keyword, int page, int size) {
         getTenantAdmin(tenantAdminId);
 
         int normalizedPage = Math.max(0, page);
         int normalizedSize = Math.max(1, Math.min(size, 100));
         String normalizedKeyword = normalizeKeyword(keyword);
+        log.info("normalizedKeyword",normalizedKeyword) ;
+        if (normalizedKeyword == null) {
+            Page<ProjectEntity> projectPage = repository.findAllByTenantAdminId(
+                    tenantAdminId,
+                    PageRequest.of(normalizedPage, normalizedSize)
+            );
+            return mapToPageResponse(projectPage);
+        }
 
         Page<ProjectEntity> projectPage = repository.searchByTenantAdminIdAndKeyword(
                 tenantAdminId,
@@ -155,19 +183,89 @@ public class ProjectServiceImpl extends BaseServiceImpl<ProjectEntity, ProjectRe
     }
 
 
-    private ProjectResponse mapToResponse(ProjectEntity project) {
+        private ProjectResponse mapToResponse(ProjectEntity project) {
+        return ProjectResponse.builder()
+            .id(project.getId())
+            .nameProject(project.getNameProject())
+            .ownerId(project.getOwner().getId())
+            .ownerName(project.getOwner().getUserName())
+            .updatedAt(project.getUpdatedAt())
+            .build();
+        }
+
+        private ProjectResponse mapToResponse(
+            ProjectEntity project,
+            String currentUserId,
+            String currentUserRole,
+            String currentTenantId
+    ) {
+        boolean currentUserIsOwner = currentUserId != null && currentUserId.equals(project.getOwner().getId());
+        boolean currentUserCanManageMembers = canManageProjectMembers(project, currentUserId, currentUserRole, currentTenantId);
+
         return ProjectResponse.builder()
                 .id(project.getId())
                 .nameProject(project.getNameProject())
                 .ownerId(project.getOwner().getId())
                 .ownerName(project.getOwner().getUserName())
-                .tenantId(project.getTenant().getId())
-                .tenantName(project.getTenant().getNameTenant())
-                .tenantAdminId(project.getTenantAdmin().getId())
-                .tenantAdminName(project.getTenantAdmin().getUserName())
-                .createdAt(project.getCreatedAt())
+                .currentUserIsOwner(currentUserIsOwner)
+                .currentUserCanManageMembers(currentUserCanManageMembers)
                 .updatedAt(project.getUpdatedAt())
                 .build();
+    }
+
+    private void validateProjectAccess(
+            ProjectEntity project,
+            String currentUserId,
+            String currentUserRole,
+            String currentTenantId
+    ) {
+        if (currentUserRole == null) {
+            throw new ForbiddenException("User role is required");
+        }
+
+        if ("TENANT_ADMIN".equals(currentUserRole)) {
+            if (currentTenantId == null || !currentTenantId.equals(project.getTenant().getId())) {
+                throw new ForbiddenException("TenantAdmin không cùng tenant với project");
+            }
+            return;
+        }
+
+        if ("USER".equals(currentUserRole)) {
+            boolean isOwner = currentUserId != null && currentUserId.equals(project.getOwner().getId());
+            boolean isMember = currentUserId != null && userProjectRepository.existsByUserIdAndProjectId(currentUserId, project.getId());
+
+            if (!isOwner && !isMember) {
+                throw new ForbiddenException("User does not have access to this project");
+            }
+
+            if (currentTenantId != null && !currentTenantId.equals(project.getTenant().getId())) {
+                throw new ForbiddenException("User không cùng tenant với project");
+            }
+
+            return;
+        }
+
+        throw new ForbiddenException("Role không được phép truy cập project");
+    }
+
+    private boolean canManageProjectMembers(
+            ProjectEntity project,
+            String currentUserId,
+            String currentUserRole,
+            String currentTenantId
+    ) {
+        if (currentUserRole == null) {
+            return false;
+        }
+
+        if ("TENANT_ADMIN".equals(currentUserRole)) {
+            return currentTenantId != null && currentTenantId.equals(project.getTenant().getId());
+        }
+
+        return "USER".equals(currentUserRole)
+                && currentUserId != null
+                && currentUserId.equals(project.getOwner().getId())
+                && (currentTenantId == null || currentTenantId.equals(project.getTenant().getId()));
     }
 
     private ProjectPageResponse mapToPageResponse(Page<ProjectEntity> projectPage) {
@@ -188,6 +286,7 @@ public class ProjectServiceImpl extends BaseServiceImpl<ProjectEntity, ProjectRe
     }
 
     private String normalizeKeyword(String keyword) {
+        log.info("keyword", keyword);
         if (keyword == null) {
             return null;
         }

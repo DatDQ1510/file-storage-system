@@ -41,7 +41,7 @@ public class UserController {
 	private final UserService userService;
 
 	@GetMapping
-	@RequireRole(UserRole.TENANT_ADMIN)
+	// @RequireRole(UserRole.TENANT_ADMIN)
 	public ResponseEntity<ApiResponse<AllUserPageResponse>> getAllUsers(
 			Authentication authentication,
 			@RequestParam(value = "page", defaultValue = "0") @Min(0) int page,

@@ -126,6 +126,28 @@ public class UserServiceImpl extends BaseServiceImpl<UserEntity, UserRepository>
         int normalizedSize = Math.max(1, Math.min(size, 100));
         String normalizedKeyword = normalizeKeyword(keyword);
 
+            if (normalizedKeyword == null) {
+                Page<UserEntity> userPage = repository.findAllByTenantId(
+                    tenantId,
+                    PageRequest.of(normalizedPage, normalizedSize)
+                );
+
+                List<UserSearchItemResponse> items = userPage.getContent()
+                    .stream()
+                    .map(user -> new UserSearchItemResponse(user.getId(), user.getUserName(), user.getEmail()))
+                    .toList();
+
+                return new UserSearchPageResponse(
+                    items,
+                    userPage.getNumber(),
+                    userPage.getSize(),
+                    userPage.getTotalElements(),
+                    userPage.getTotalPages(),
+                    userPage.hasNext(),
+                    userPage.hasPrevious()
+                );
+            }
+
         Page<UserEntity> userPage = repository.searchByTenantIdAndKeyword(
             tenantId,
             normalizedKeyword,

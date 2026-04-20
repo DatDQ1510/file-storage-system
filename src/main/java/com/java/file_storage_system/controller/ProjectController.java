@@ -1,6 +1,8 @@
 package com.java.file_storage_system.controller;
 
+import com.java.file_storage_system.constant.UserRole;
 import com.java.file_storage_system.context.UserContext;
+import com.java.file_storage_system.custom.RequireRole;
 import com.java.file_storage_system.dto.project.ProjectPageResponse;
 import com.java.file_storage_system.dto.project.ProjectRequest;
 import com.java.file_storage_system.dto.project.ProjectResponse;
@@ -61,10 +63,11 @@ public class ProjectController {
     }
 
     @GetMapping
-        public ResponseEntity<ApiResponse<ProjectPageResponse>> getAllProjectsByTenantAdmin(
-            @RequestParam(value = "page", defaultValue = "0") @Min(0) int page,
-            @RequestParam(value = "size", defaultValue = "10") @Min(1) @Max(100) int size,
-            HttpServletRequest httpServletRequest
+    @RequireRole(UserRole.TENANT_ADMIN)
+    public ResponseEntity<ApiResponse<ProjectPageResponse>> getAllProjectsByTenantAdmin(
+        @RequestParam(value = "page", defaultValue = "0") @Min(0) int page,
+        @RequestParam(value = "size", defaultValue = "10") @Min(1) @Max(100) int size,
+        HttpServletRequest httpServletRequest
     ) {
         requireTenantAdmin();
 
@@ -75,6 +78,7 @@ public class ProjectController {
     }
 
     @GetMapping("/search")
+    @RequireRole(UserRole.TENANT_ADMIN)
         public ResponseEntity<ApiResponse<ProjectPageResponse>> searchProjectsByTenantAdmin(
             @RequestParam(value = "keyword", required = false) String keyword,
             @RequestParam(value = "page", defaultValue = "0") @Min(0) int page,
@@ -89,7 +93,21 @@ public class ProjectController {
         );
     }
 
+    @GetMapping("/my-projects")
+    @RequireRole(UserRole.USER)
+    public ResponseEntity<ApiResponse<ProjectPageResponse>> getAllProjectsByUser(
+            @RequestParam(value = "page", defaultValue = "0") @Min(0) int page,
+            @RequestParam(value = "size", defaultValue = "10") @Min(1) @Max(100) int size,
+            HttpServletRequest httpServletRequest
+    ) {
+        ProjectPageResponse response = projectService.getAllProjectsByUser(userContext.getId(), page, size);
+        return ResponseEntity.ok(
+                ApiResponse.success("Get user projects successfully", response, httpServletRequest.getRequestURI())
+        );
+    }
+
     @PostMapping("/{projectId}/members")
+    // @RequireRole(UserRole.TENANT_ADMIN)
         public ResponseEntity<ApiResponse<ProjectMemberResponse>> addUserToProject(
             @PathVariable("projectId") String projectId,
             @Valid @RequestBody AddProjectMemberRequest request,
@@ -112,5 +130,19 @@ public class ProjectController {
             log.warn("User {} is not tenant admin", userContext.getUsername());
             throw new ForbiddenException("Only tenant admin can perform this action");
         }
+    }
+
+    @GetMapping("/{projectId}")
+    public ResponseEntity<ApiResponse<ProjectResponse>> getProjectById(
+            @PathVariable("projectId") String projectId,
+            HttpServletRequest httpServletRequest
+    ) {
+        ProjectResponse response = projectService.getProjectById(
+            projectId,
+            userContext.getId(),
+            userContext.getRole(),
+            userContext.getTenantId()
+        );
+        return ResponseEntity.ok(ApiResponse.success("Get project successfully", response, httpServletRequest.getRequestURI()));
     }
 }

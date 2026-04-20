@@ -42,4 +42,19 @@ public interface ProjectRepository extends BaseRepository<ProjectEntity> {
 			@Param("keyword") String keyword,
 			Pageable pageable
 	);
+
+	@Query("""
+			select distinct p
+			from ProjectEntity p
+			left join p.userProjects up
+			where p.status = :status
+			and (p.owner.id = :userId or up.user.id = :userId)
+						
+			order by p.updatedAt
+			""")
+	Page<ProjectEntity> findAllByOwnerIdOrMemberUserId(
+			@Param("userId") String userId,
+			@Param("status") com.java.file_storage_system.constant.ProjectStatus status,
+			Pageable pageable
+	);
 }

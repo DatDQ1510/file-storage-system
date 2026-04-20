@@ -41,9 +41,8 @@ public interface UserRepository extends BaseRepository<UserEntity> {
 			from UserEntity u
 			where u.tenant.id = :tenantId
 			and (
-				:keyword is null
-				or lower(u.userName) like lower(concat('%', :keyword, '%'))
-				or lower(u.email) like lower(concat('%', :keyword, '%'))
+				lower(u.userName) like lower(concat('%', coalesce(:keyword, ''), '%'))
+				or lower(u.email) like lower(concat('%', coalesce(:keyword, ''), '%'))
 			)
 			""")
 	Page<UserEntity> searchByTenantIdAndKeyword(

@@ -15,12 +15,8 @@ public record ProjectResponse(
         String nameProject,
         String ownerId,
         String ownerName,
-        String tenantId,
-        String tenantName,
-        String tenantAdminId,
-        String tenantAdminName,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt,
-        String status
+        Boolean currentUserIsOwner,
+        Boolean currentUserCanManageMembers,
+        LocalDateTime updatedAt
 ) {
 }

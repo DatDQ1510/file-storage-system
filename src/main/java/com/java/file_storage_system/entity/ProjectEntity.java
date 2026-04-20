@@ -1,8 +1,11 @@
 package com.java.file_storage_system.entity;
 
-import jakarta.persistence.Column;
+import com.java.file_storage_system.constant.ProjectStatus;
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -24,6 +27,10 @@ public class ProjectEntity extends BaseEntity {
     @Column(name = "name", nullable = false)
     private String nameProject;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, columnDefinition = "VARCHAR(50) DEFAULT 'ACTIVE'")
+    private ProjectStatus status;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tenantId", nullable = false)
     @ToString.Exclude
@@ -40,7 +47,7 @@ public class ProjectEntity extends BaseEntity {
     @JoinColumn(name = "tenantAdminId", nullable = false)
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
-    private TenantAdminEntity tenantAdmin ;
+    private TenantAdminEntity tenantAdmin;
 
     @OneToMany(mappedBy = "project", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude

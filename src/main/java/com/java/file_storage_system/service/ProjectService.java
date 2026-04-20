@@ -30,9 +30,11 @@ public interface ProjectService extends BaseService<ProjectEntity> {
      * @param projectId ID của project
      * @return ProjectResponse
      */
-    ProjectResponse getProjectById(String projectId);
+    ProjectResponse getProjectById(String projectId, String currentUserId, String currentUserRole, String currentTenantId);
 
     ProjectPageResponse getAllProjectsByTenantAdmin(String tenantAdminId, int page, int size);
+
+    ProjectPageResponse getAllProjectsByUser(String userId, int page, int size);
 
     ProjectPageResponse searchProjectsByTenantAdmin(String tenantAdminId, String keyword, int page, int size);
 
