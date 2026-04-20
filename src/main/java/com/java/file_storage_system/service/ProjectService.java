@@ -4,6 +4,7 @@ import com.java.file_storage_system.dto.project.ProjectRequest;
 import com.java.file_storage_system.dto.project.ProjectPageResponse;
 import com.java.file_storage_system.dto.project.ProjectResponse;
 import com.java.file_storage_system.dto.project.member.AddProjectMemberRequest;
+import com.java.file_storage_system.dto.project.member.AssignProjectMemberRequest;
 import com.java.file_storage_system.dto.project.member.ProjectMemberResponse;
 import com.java.file_storage_system.entity.ProjectEntity;
 
@@ -45,4 +46,12 @@ public interface ProjectService extends BaseService<ProjectEntity> {
             String actorRole,
             String actorTenantId
     );
+
+        ProjectMemberResponse assignMemberToProject(
+            String projectId,
+            AssignProjectMemberRequest request,
+            String actorId,
+            String actorRole,
+            String actorTenantId
+        );
 }

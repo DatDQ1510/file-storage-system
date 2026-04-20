@@ -6,6 +6,7 @@ import java.math.BigInteger;
 import java.time.LocalDateTime;
 
 public record AllUserResponse(
+        String id,
         String userName,
         String email,
         String phoneNumber,

@@ -7,6 +7,7 @@ import com.java.file_storage_system.dto.project.ProjectPageResponse;
 import com.java.file_storage_system.dto.project.ProjectRequest;
 import com.java.file_storage_system.dto.project.ProjectResponse;
 import com.java.file_storage_system.dto.project.member.AddProjectMemberRequest;
+import com.java.file_storage_system.dto.project.member.AssignProjectMemberRequest;
 import com.java.file_storage_system.dto.project.member.ProjectMemberResponse;
 import com.java.file_storage_system.exception.ForbiddenException;
 import com.java.file_storage_system.payload.ApiResponse;
@@ -107,7 +108,7 @@ public class ProjectController {
     }
 
     @PostMapping("/{projectId}/members")
-    // @RequireRole(UserRole.TENANT_ADMIN)
+    @RequireRole(UserRole.TENANT_ADMIN)
         public ResponseEntity<ApiResponse<ProjectMemberResponse>> addUserToProject(
             @PathVariable("projectId") String projectId,
             @Valid @RequestBody AddProjectMemberRequest request,
@@ -124,6 +125,25 @@ public class ProjectController {
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(ApiResponse.success("Add project member successfully", response, httpServletRequest.getRequestURI()));
     }
+
+        @PostMapping("/{projectId}/members/assign")
+        @RequireRole({UserRole.TENANT_ADMIN, UserRole.USER})
+        public ResponseEntity<ApiResponse<ProjectMemberResponse>> assignMemberToProject(
+            @PathVariable("projectId") String projectId,
+            @Valid @RequestBody AssignProjectMemberRequest request,
+            HttpServletRequest httpServletRequest
+        ) {
+        ProjectMemberResponse response = projectService.assignMemberToProject(
+            projectId,
+            request,
+            userContext.getId(),
+            userContext.getRole(),
+            userContext.getTenantId()
+        );
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(ApiResponse.success("Assign project member successfully", response, httpServletRequest.getRequestURI()));
+        }
 
     private void requireTenantAdmin() {
         if (!userContext.isTenantAdmin()) {

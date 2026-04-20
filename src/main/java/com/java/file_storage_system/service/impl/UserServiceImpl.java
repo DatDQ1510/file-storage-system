@@ -243,6 +243,7 @@ public class UserServiceImpl extends BaseServiceImpl<UserEntity, UserRepository>
         boolean mfaEnabled = user.getSecretKey() != null && !user.getSecretKey().isBlank();
 
         return new AllUserResponse(
+            user.getId(),
             user.getUserName(),
             user.getEmail(),
             user.getPhoneNumber(),

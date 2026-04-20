@@ -6,6 +6,7 @@ import com.java.file_storage_system.dto.project.ProjectPageResponse;
 import com.java.file_storage_system.dto.project.ProjectRequest;
 import com.java.file_storage_system.dto.project.ProjectResponse;
 import com.java.file_storage_system.dto.project.member.AddProjectMemberRequest;
+import com.java.file_storage_system.dto.project.member.AssignProjectMemberRequest;
 import com.java.file_storage_system.dto.project.member.ProjectMemberResponse;
 import com.java.file_storage_system.entity.ProjectEntity;
 import com.java.file_storage_system.entity.TenantAdminEntity;
@@ -88,12 +89,45 @@ public class ProjectServiceImpl extends BaseServiceImpl<ProjectEntity, ProjectRe
             String actorRole,
             String actorTenantId
     ) {
+        log.info("addUserToProject called: projectId={}, actorId={}, actorRole={}, targetUserId={}",
+            projectId, actorId, actorRole, request.userId());
+
         ProjectEntity project = repository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException(MessageConstants.PROJECT_NOT_FOUND));
 
         validateActorCanManageMembership(project, actorId, actorRole, actorTenantId);
 
         UserEntity userToAdd = getOwner(request.userId());
+        validateUserSameTenant(project, userToAdd);
+
+        if (userProjectRepository.existsByUserIdAndProjectId(userToAdd.getId(), project.getId())) {
+            throw new ConflictException(MessageConstants.PROJECT_USER_ALREADY_MEMBER);
+        }
+
+        int permission = normalizePermission(request.permission());
+        UserEntity grantedBy = resolveGrantedByUser(actorId, actorRole);
+
+        UserProjectEntity membership = createProjectMembership(project, userToAdd, permission, grantedBy);
+        return mapToProjectMemberResponse(membership);
+    }
+
+    @Override
+    public ProjectMemberResponse assignMemberToProject(
+            String projectId,
+            AssignProjectMemberRequest request,
+            String actorId,
+            String actorRole,
+            String actorTenantId
+    ) {
+        log.info("assignMemberToProject called: projectId={}, actorId={}, actorRole={}, memberUserId={}",
+            projectId, actorId, actorRole, request.memberUserId());
+
+        ProjectEntity project = repository.findById(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException(MessageConstants.PROJECT_NOT_FOUND));
+
+        validateActorCanManageMembership(project, actorId, actorRole, actorTenantId);
+
+        UserEntity userToAdd = getOwner(request.memberUserId());
         validateUserSameTenant(project, userToAdd);
 
         if (userProjectRepository.existsByUserIdAndProjectId(userToAdd.getId(), project.getId())) {
@@ -178,8 +212,17 @@ public class ProjectServiceImpl extends BaseServiceImpl<ProjectEntity, ProjectRe
     }
 
     private UserEntity getOwner(String ownerId) {
-        return userRepository.findById(ownerId)
-                .orElseThrow(() -> new ResourceNotFoundException("User không tồn tại"));
+        if (ownerId == null || ownerId.isBlank()) {
+            log.warn("getOwner called with blank ownerId");
+            throw new ResourceNotFoundException("User không tồn tại");
+        }
+
+        String normalizedOwnerId = ownerId.trim();
+        return userRepository.findById(normalizedOwnerId)
+                .orElseThrow(() -> {
+                    log.warn("User not found by id: {}", normalizedOwnerId);
+                    return new ResourceNotFoundException("User không tồn tại");
+                });
     }
 
 
