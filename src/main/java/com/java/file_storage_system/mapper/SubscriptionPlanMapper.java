@@ -2,6 +2,7 @@ package com.java.file_storage_system.mapper;
 
 import com.java.file_storage_system.dto.subscriptionPlan.SubscriptionPlanRequest;
 import com.java.file_storage_system.dto.subscriptionPlan.SubscriptionPlanResponse;
+import com.java.file_storage_system.constant.PlanStatus;
 import com.java.file_storage_system.entity.SubscriptionPlanEntity;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class SubscriptionPlanMapper {
         entity.setMaxUsers(request.maxUsers());
         entity.setPrice(request.price());
         entity.setBillingCycle(request.billingCycle());
+        entity.setPlanStatus(request.planStatus() == null ? PlanStatus.ACTIVE : request.planStatus());
         entity.setFeatures(request.features() == null ? null : objectMapper.valueToTree(request.features()));
         return entity;
     }
@@ -42,6 +44,7 @@ public class SubscriptionPlanMapper {
                 entity.getMaxUsers(),
                 entity.getPrice(),
                 entity.getBillingCycle(),
+                entity.getPlanStatus(),
                 entity.getFeatures() == null ? null : objectMapper.convertValue(entity.getFeatures(), Map.class),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()

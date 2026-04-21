@@ -1,5 +1,6 @@
 package com.java.file_storage_system.controller;
 
+import com.java.file_storage_system.constant.PlanStatus;
 import com.java.file_storage_system.dto.subscriptionPlan.SubscriptionPlanRequest;
 import com.java.file_storage_system.dto.subscriptionPlan.SubscriptionPlanResponse;
 import com.java.file_storage_system.exception.ResourceNotFoundException;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -33,8 +35,15 @@ public class SubscriptionPlanController {
     private final SubscriptionPlanMapper subscriptionPlanMapper;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<SubscriptionPlanResponse>>> getAllSubscriptionPlans(HttpServletRequest httpServletRequest) {
-        List<SubscriptionPlanResponse> plans = subscriptionPlanMapper.toResponses(subscriptionPlanService.findAll());
+    public ResponseEntity<ApiResponse<List<SubscriptionPlanResponse>>> getAllSubscriptionPlans(
+            @RequestParam(value = "status", required = false) PlanStatus status,
+            HttpServletRequest httpServletRequest
+    ) {
+        List<SubscriptionPlanResponse> plans = subscriptionPlanMapper.toResponses(
+                status == null
+                        ? subscriptionPlanService.findAll()
+                        : subscriptionPlanService.findByPlanStatus(status)
+        );
         return ResponseEntity.ok(ApiResponse.success("Get subscription plans successfully", plans, httpServletRequest.getRequestURI()));
     }
 

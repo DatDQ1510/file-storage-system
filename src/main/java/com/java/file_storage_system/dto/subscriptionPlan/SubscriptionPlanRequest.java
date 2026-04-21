@@ -1,6 +1,7 @@
 package com.java.file_storage_system.dto.subscriptionPlan;
 
 import com.java.file_storage_system.constant.BillingCycle;
+import com.java.file_storage_system.constant.PlanStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -32,6 +33,8 @@ public record SubscriptionPlanRequest(
 
         @NotNull(message = "billingCycle is required")
         BillingCycle billingCycle,
+
+        PlanStatus planStatus,
 
         Map<String, Object> features
 ) {
