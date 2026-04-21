@@ -9,6 +9,7 @@ import com.java.file_storage_system.dto.auth.ForgotPasswordSendCodeRequest;
 import com.java.file_storage_system.dto.auth.ForgotPasswordVerifyCodeRequest;
 import com.java.file_storage_system.dto.auth.ForgotPasswordResetRequest;
 import com.java.file_storage_system.dto.auth.LoginRequest;
+import com.java.file_storage_system.dto.auth.UpdateProfileRequest;
 import com.java.file_storage_system.dto.user.changePassword.ChangePasswordRequest;
 import com.java.file_storage_system.entity.SystemAdminEntity;
 import com.java.file_storage_system.entity.TenantAdminEntity;
@@ -253,6 +254,83 @@ public class AuthServiceImpl implements AuthService {
         throw ResourceNotFoundException.byField("User", "id", id);
     }
 
+    @Override
+    @Transactional
+    public AuthMeResponse updateProfile(CustomUserDetails principal, UpdateProfileRequest request) {
+        String normalizedUserName = normalizeUserName(request.username());
+        String normalizedEmail = normalizeEmail(request.email());
+
+        switch (principal.getRole()) {
+            case "USER" -> updateUserProfile(principal.getId(), principal.getTenantId(), normalizedUserName, normalizedEmail);
+            case "TENANT_ADMIN" -> updateTenantAdminProfile(principal.getId(), normalizedUserName, normalizedEmail);
+            case "SYSTEM_ADMIN" -> updateSystemAdminProfile(principal.getId(), normalizedUserName, normalizedEmail);
+            default -> throw new UnauthorizedException("Unsupported account role");
+        }
+
+        return getBasicUserInfoById(UUID.fromString(principal.getId()));
+    }
+
+    private void updateUserProfile(String userId, String tenantId, String normalizedUserName, String normalizedEmail) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new UnauthorizedException("Tenant scope is required for user profile update");
+        }
+
+        if (!user.getUserName().equalsIgnoreCase(normalizedUserName)
+                && userRepository.existsByUserNameIgnoreCaseAndTenantId(normalizedUserName, tenantId)) {
+            throw new ConflictException("Username already exists in tenant: " + normalizedUserName);
+        }
+
+        if (!user.getEmail().equalsIgnoreCase(normalizedEmail)
+                && userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
+            throw new ConflictException("User email already exists: " + normalizedEmail);
+        }
+
+        user.setUserName(normalizedUserName);
+        user.setEmail(normalizedEmail);
+        userRepository.save(user);
+    }
+
+    private void updateTenantAdminProfile(String tenantAdminId, String normalizedUserName, String normalizedEmail) {
+        TenantAdminEntity tenantAdmin = tenantAdminRepository.findById(tenantAdminId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tenant admin not found with id: " + tenantAdminId));
+
+        if (!tenantAdmin.getUserName().equalsIgnoreCase(normalizedUserName)
+                && tenantAdminRepository.existsByUserNameIgnoreCase(normalizedUserName)) {
+            throw new ConflictException("Tenant admin userName already exists: " + normalizedUserName);
+        }
+
+        if (!tenantAdmin.getEmail().equalsIgnoreCase(normalizedEmail)
+                && tenantAdminRepository.existsByEmailIgnoreCase(normalizedEmail)) {
+            throw new ConflictException("Tenant admin email already exists: " + normalizedEmail);
+        }
+
+        tenantAdmin.setUserName(normalizedUserName);
+        tenantAdmin.setEmail(normalizedEmail);
+        tenantAdminRepository.save(tenantAdmin);
+    }
+
+    private void updateSystemAdminProfile(String systemAdminId, String normalizedUserName, String normalizedEmail) {
+        SystemAdminEntity systemAdmin = systemAdminRepository.findById(systemAdminId)
+                .orElseThrow(() -> new ResourceNotFoundException("System admin not found with id: " + systemAdminId));
+
+        if (!systemAdmin.getUserName().equalsIgnoreCase(normalizedUserName)
+                && systemAdminRepository.existsByUserNameIgnoreCase(normalizedUserName)) {
+            throw new ConflictException("System admin username already exists: " + normalizedUserName);
+        }
+
+        if (!systemAdmin.getEmail().equalsIgnoreCase(normalizedEmail)
+                && systemAdminRepository.findByEmailIgnoreCase(normalizedEmail).isPresent()) {
+            throw new ConflictException("System admin email already exists: " + normalizedEmail);
+        }
+
+        systemAdmin.setUserName(normalizedUserName);
+        systemAdmin.setEmail(normalizedEmail);
+        systemAdminRepository.save(systemAdmin);
+    }
+
     private boolean updateForgotPasswordForAccountByEmail(String normalizedEmail, String encodedPassword) {
         UserEntity user = userRepository.findByEmailIgnoreCase(normalizedEmail).orElse(null);
         if (user != null) {
@@ -329,6 +407,10 @@ public class AuthServiceImpl implements AuthService {
 
     private String normalizeEmail(String email) {
         return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeUserName(String userName) {
+        return userName.trim().toLowerCase(Locale.ROOT);
     }
 
     private boolean isNotBlank(String value) {

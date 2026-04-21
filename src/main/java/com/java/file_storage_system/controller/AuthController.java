@@ -8,6 +8,7 @@ import com.java.file_storage_system.dto.auth.ForgotPasswordSendCodeRequest;
 import com.java.file_storage_system.dto.auth.ForgotPasswordVerifyCodeRequest;
 import com.java.file_storage_system.dto.auth.LoginRequest;
 import com.java.file_storage_system.dto.auth.AuthMeResponse;
+import com.java.file_storage_system.dto.auth.UpdateProfileRequest;
 import com.java.file_storage_system.dto.user.changePassword.ChangePasswordRequest;
 import com.java.file_storage_system.exception.UnauthorizedException;
 import com.java.file_storage_system.payload.ApiResponse;
@@ -165,13 +166,13 @@ public class AuthController {
     @PatchMapping("/profile")
     public ResponseEntity<ApiResponse<AuthMeResponse>> profile(
             Authentication authentication,
+            @Valid @RequestBody UpdateProfileRequest request,
             HttpServletRequest httpServletRequest
     ) {
         CustomUserDetails principal = extractPrincipal(authentication);
-        UUID userId = UUID.fromString(principal.getId());
-        AuthMeResponse response = authService.getBasicUserInfoById(userId);
+        AuthMeResponse response = authService.updateProfile(principal, request);
         return ResponseEntity.ok(
-                ApiResponse.success("Get user info successfully", response, httpServletRequest.getRequestURI())
+                ApiResponse.success("Update user info successfully", response, httpServletRequest.getRequestURI())
         );
     }
 
