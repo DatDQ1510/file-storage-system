@@ -2,10 +2,12 @@ package com.java.file_storage_system.custom;
 
 import com.java.file_storage_system.context.UserContext;
 import com.java.file_storage_system.entity.FolderEntity;
+import com.java.file_storage_system.entity.ProjectEntity;
 import com.java.file_storage_system.entity.UserProjectEntity;
 import com.java.file_storage_system.exception.ForbiddenException;
 import com.java.file_storage_system.exception.ResourceNotFoundException;
 import com.java.file_storage_system.repository.FolderRepository;
+import com.java.file_storage_system.repository.ProjectRepository;
 import com.java.file_storage_system.repository.UserProjectRepository;
 import lombok.RequiredArgsConstructor;
 import org.aspectj.lang.JoinPoint;
@@ -42,6 +44,7 @@ public class FolderPermissionAspect {
 
     private final UserContext userContext;
     private final FolderRepository folderRepository;
+    private final ProjectRepository projectRepository;
     private final UserProjectRepository userProjectRepository;
 
     @Before("@annotation(com.java.file_storage_system.custom.RequireFolderPermission)")
@@ -58,23 +61,35 @@ public class FolderPermissionAspect {
             case DELETE -> PERMISSION_DELETE;
         };
 
+        String folderId = extractFolderIdArg(sig, joinPoint.getArgs());
+        String projectId = extractProjectIdArg(sig, joinPoint.getArgs());
+
         // TENANT_ADMIN chỉ được phép đọc folder
         if ("TENANT_ADMIN".equals(userContext.getRole())) {
             if (requiredBit == PERMISSION_READ) {
-                String folderId = extractFolderIdArg(sig, joinPoint.getArgs());
-                if (folderId == null) {
-                    throw new ForbiddenException("Không xác định được folderId để kiểm tra quyền");
-                }
-
-                FolderEntity folder = folderRepository.findById(folderId)
-                        .orElseThrow(() -> ResourceNotFoundException.byField("Folder", "id", folderId));
-
                 String actorTenantId = userContext.getTenantId();
-                if (actorTenantId == null || !actorTenantId.equals(folder.getProject().getTenant().getId())) {
-                    throw new ForbiddenException("Tenant admin không cùng tenant với folder");
+
+                if (folderId != null) {
+                    FolderEntity folder = folderRepository.findById(folderId)
+                            .orElseThrow(() -> ResourceNotFoundException.byField("Folder", "id", folderId));
+
+                    if (actorTenantId == null || !actorTenantId.equals(folder.getProject().getTenant().getId())) {
+                        throw new ForbiddenException("Tenant admin không cùng tenant với folder");
+                    }
+                    return;
                 }
 
-                return;
+                if (projectId != null) {
+                    ProjectEntity project = projectRepository.findById(projectId)
+                            .orElseThrow(() -> ResourceNotFoundException.byField("Project", "id", projectId));
+
+                    if (actorTenantId == null || !actorTenantId.equals(project.getTenant().getId())) {
+                        throw new ForbiddenException("Tenant admin không cùng tenant với project");
+                    }
+                    return;
+                }
+
+                throw new ForbiddenException("Không xác định được resource để kiểm tra quyền READ");
             }
 
             throw new ForbiddenException("Tenant admin không có quyền thao tác WRITE/DELETE trên folder");
@@ -85,8 +100,31 @@ public class FolderPermissionAspect {
             throw new ForbiddenException("Role không có quyền thực hiện thao tác này trên folder");
         }
 
-        // Tìm folderId từ tham số method (tên param phải là "folderId")
-        String folderId = extractFolderIdArg(sig, joinPoint.getArgs());
+        if (folderId == null && requiredBit == PERMISSION_READ && projectId != null) {
+            ProjectEntity project = projectRepository.findById(projectId)
+                    .orElseThrow(() -> ResourceNotFoundException.byField("Project", "id", projectId));
+
+            String actorId = userContext.getId();
+            String actorTenantId = userContext.getTenantId();
+            if (actorTenantId == null || !actorTenantId.equals(project.getTenant().getId())) {
+                throw new ForbiddenException("Actor không cùng tenant với project");
+            }
+
+            if (project.getOwner().getId().equals(actorId)) {
+                return;
+            }
+
+            Integer projectPermission = userProjectRepository.findByUserIdAndProjectId(actorId, projectId)
+                    .map(UserProjectEntity::getPermission)
+                    .orElse(null);
+
+            if (projectPermission == null || (projectPermission & requiredBit) == 0) {
+                throw new ForbiddenException("User không có quyền READ trong project");
+            }
+
+            return;
+        }
+
         if (folderId == null) {
             throw new ForbiddenException("Không xác định được folderId để kiểm tra quyền");
         }
@@ -109,7 +147,11 @@ public class FolderPermissionAspect {
         Integer effectivePermission = resolveEffectivePermission(folderId, actorId, folder);
 
         if (effectivePermission == null || (effectivePermission & requiredBit) == 0) {
-            String action = annotation.value() == RequireFolderPermission.FolderAction.WRITE ? "WRITE" : "DELETE";
+            String action = switch (annotation.value()) {
+                case READ -> "READ";
+                case WRITE -> "WRITE";
+                case DELETE -> "DELETE";
+            };
             throw new ForbiddenException(
                     "User không có quyền " + action + " trên folder này. " +
                     "Cần bit " + requiredBit + " trong permission bitmask."
@@ -142,6 +184,16 @@ public class FolderPermissionAspect {
         Parameter[] params = sig.getMethod().getParameters();
         for (int i = 0; i < params.length; i++) {
             if ("folderId".equals(params[i].getName()) && args[i] instanceof String s) {
+                return s;
+            }
+        }
+        return null;
+    }
+
+    private String extractProjectIdArg(MethodSignature sig, Object[] args) {
+        Parameter[] params = sig.getMethod().getParameters();
+        for (int i = 0; i < params.length; i++) {
+            if ("projectId".equals(params[i].getName()) && args[i] instanceof String s) {
                 return s;
             }
         }

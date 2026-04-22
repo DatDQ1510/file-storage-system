@@ -364,6 +364,30 @@ public class FolderServiceImpl extends BaseServiceImpl<FolderEntity, FolderRepos
         repository.delete(folder);
     }
 
+    @Override
+    public List<FolderResponse> getFoldersByParentId(
+            String projectId,
+            String parentFolderId,
+            String actorId,
+            String actorRole,
+            String actorTenantId) {
+        ProjectEntity project = findProject(projectId);
+        validateActorCanAccessProject(project, actorId, actorRole, actorTenantId);
+
+        List<FolderEntity> folders;
+        if (parentFolderId == null || parentFolderId.isBlank() || "ROOT".equalsIgnoreCase(parentFolderId)) {
+            // Root level: parentFolder IS NULL
+            folders = repository.findAllRootFoldersByProjectId(projectId);
+        } else {
+            // Verify parent exists
+            repository.findById(parentFolderId)
+                    .orElseThrow(() -> ResourceNotFoundException.byField("Folder", "id", parentFolderId));
+            folders = repository.findAllByProjectIdAndParentFolderId(projectId, parentFolderId);
+        }
+
+        return folders.stream().map(this::mapToResponse).toList();
+    }
+
     private TenantEntity findTenant(String tenantId) {
         return tenantRepository.findById(tenantId)
                 .orElseThrow(() -> ResourceNotFoundException.byField("Tenant", "id", tenantId));

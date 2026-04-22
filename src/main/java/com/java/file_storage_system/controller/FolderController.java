@@ -4,27 +4,32 @@ import com.java.file_storage_system.constant.UserRole;
 import com.java.file_storage_system.context.UserContext;
 import com.java.file_storage_system.custom.RequireFolderPermission;
 import com.java.file_storage_system.custom.RequireRole;
-import com.java.file_storage_system.dto.folder.CreateFolderRequest;
-import com.java.file_storage_system.dto.folder.CreateFolderWithAclRequest;
-import com.java.file_storage_system.dto.folder.CreateFolderWithAclResponse;
 import com.java.file_storage_system.dto.folder.FolderAclItemResponse;
-import com.java.file_storage_system.dto.folder.FolderPathNodeResponse;
 import com.java.file_storage_system.dto.folder.FolderResponse;
-import com.java.file_storage_system.dto.folder.ProjectMemberForAclResponse;
 import com.java.file_storage_system.dto.folder.RenameFolderRequest;
-import com.java.file_storage_system.dto.folder.UpdateFolderRequest;
 import com.java.file_storage_system.dto.folder.UpsertFolderAclRequest;
 import com.java.file_storage_system.payload.ApiResponse;
 import com.java.file_storage_system.service.FolderService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Folder-specific endpoints (không liên quan đến project hierarchy).
+ * Resource hierarchy:
+ *   GET    /api/v1/folders/{folderId}                   → lấy 1 folder theo id
+ *   GET    /api/v1/folders/{folderId}/children           → lấy direct children theo parentId
+ *   PATCH  /api/v1/folders/{folderId}                   → đổi tên folder (yêu cầu WRITE)
+ *   DELETE /api/v1/folders/{folderId}                   → xóa folder (yêu cầu DELETE)
+ *   GET    /api/v1/folders/{folderId}/acl               → xem ACL của folder
+ *   PUT    /api/v1/folders/{folderId}/acl/{userId}      → upsert ACL entry
+ *
+ * Project-scoped folder endpoints nằm trong ProjectController (/api/v1/projects/{projectId}/folders/*).
+ */
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/v1/folders")
@@ -33,221 +38,59 @@ public class FolderController {
     private final FolderService folderService;
     private final UserContext userContext;
 
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<FolderResponse>>> getAllFolders(HttpServletRequest httpServletRequest) {
-	List<FolderResponse> folders = folderService.getAllFolders();
-	return ResponseEntity.ok(ApiResponse.success("Get folders successfully", folders, httpServletRequest.getRequestURI()));
-    }
+    // ─── Single folder ────────────────────────────────────────────────────────
 
+    /**
+     * GET /api/v1/folders/{folderId}
+     * Lấy thông tin chi tiết của một folder.
+     */
     @GetMapping("/{folderId}")
+    @RequireRole({UserRole.TENANT_ADMIN, UserRole.USER})
+    @RequireFolderPermission(RequireFolderPermission.FolderAction.READ)
     public ResponseEntity<ApiResponse<FolderResponse>> getFolderById(
-	    @PathVariable("folderId") String folderId,
-	    HttpServletRequest httpServletRequest
-    ) {
-	FolderResponse folder = folderService.getFolderById(folderId);
-
-	return ResponseEntity.ok(
-		ApiResponse.success("Get folder successfully", folder, httpServletRequest.getRequestURI())
-	);
-    }
-
-    @PostMapping
-    public ResponseEntity<ApiResponse<FolderResponse>> createFolder(
-	    @Valid @RequestBody CreateFolderRequest request,
-	    HttpServletRequest httpServletRequest
-    ) {
-	FolderResponse created = folderService.createFolder(request);
-
-	return ResponseEntity.status(HttpStatus.CREATED)
-		.body(ApiResponse.success("Create folder successfully", created, httpServletRequest.getRequestURI()));
-    }
-
-    @PutMapping("/{folderId}")
-    public ResponseEntity<ApiResponse<FolderResponse>> updateFolder(
-	    @PathVariable("folderId") String folderId,
-	    @Valid @RequestBody UpdateFolderRequest request,
-	    HttpServletRequest httpServletRequest
-    ) {
-	FolderResponse updated = folderService.updateFolder(folderId, request);
-
-	return ResponseEntity.ok(
-		ApiResponse.success("Update folder successfully", updated, httpServletRequest.getRequestURI())
-	);
-    }
-
-    @DeleteMapping("/{folderId}")
-    public ResponseEntity<ApiResponse<String>> deleteFolder(
-	    @PathVariable("folderId") String folderId,
-	    HttpServletRequest httpServletRequest
-    ) {
-	folderService.deleteFolder(folderId);
-	return ResponseEntity.ok(ApiResponse.success("Delete folder successfully", httpServletRequest.getRequestURI()));
-    }
-
-    @GetMapping("/project/{projectId}")
-    @RequireRole({UserRole.TENANT_ADMIN, UserRole.USER})
-        @RequireFolderPermission(RequireFolderPermission.FolderAction.READ)
-    public ResponseEntity<ApiResponse<List<FolderResponse>>> getFoldersByProject(
-            @PathVariable("projectId") String projectId,
-            HttpServletRequest httpServletRequest
-    ) {
-        List<FolderResponse> folders = folderService.getFoldersByProject(
-                projectId,
-                userContext.getId(),
-                userContext.getRole(),
-                userContext.getTenantId()
-        );
-
-        return ResponseEntity.ok(
-                ApiResponse.success("Get project folders successfully", folders, httpServletRequest.getRequestURI())
-        );
-    }
-
-    @PostMapping("/project/{projectId}/with-acl")
-    @RequireRole({UserRole.TENANT_ADMIN, UserRole.USER})
-    public ResponseEntity<ApiResponse<CreateFolderWithAclResponse>> createFolderWithAcl(
-            @PathVariable("projectId") String projectId,
-            @Valid @RequestBody CreateFolderWithAclRequest request,
-            HttpServletRequest httpServletRequest
-    ) {
-        CreateFolderWithAclResponse response = folderService.createFolderWithAcl(
-                projectId,
-                request,
-                userContext.getId(),
-                userContext.getRole(),
-                userContext.getTenantId()
-        );
-
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Create folder with ACL successfully", response, httpServletRequest.getRequestURI()));
-    }
-
-    @GetMapping("/project/{projectId}/paths/children")
-    @RequireRole({UserRole.TENANT_ADMIN, UserRole.USER})
-        @RequireFolderPermission(RequireFolderPermission.FolderAction.READ)
-    public ResponseEntity<ApiResponse<List<FolderPathNodeResponse>>> getChildFolderPaths(
-            @PathVariable("projectId") String projectId,
-            @RequestParam(value = "parentPath", defaultValue = "/") String parentPath,
-            HttpServletRequest httpServletRequest
-    ) {
-        List<FolderPathNodeResponse> response = folderService.getChildFolderPaths(
-                projectId,
-                parentPath,
-                userContext.getId(),
-                userContext.getRole(),
-                userContext.getTenantId()
-        );
-
-        return ResponseEntity.ok(
-                ApiResponse.success("Get child folder paths successfully", response, httpServletRequest.getRequestURI())
-        );
-    }
-
-    @GetMapping("/project/{projectId}/paths/search")
-    @RequireRole({UserRole.TENANT_ADMIN, UserRole.USER})
-        @RequireFolderPermission(RequireFolderPermission.FolderAction.READ)
-    public ResponseEntity<ApiResponse<List<FolderPathNodeResponse>>> searchFolderPaths(
-            @PathVariable("projectId") String projectId,
-            @RequestParam("keyword") String keyword,
-            HttpServletRequest httpServletRequest
-    ) {
-        List<FolderPathNodeResponse> response = folderService.searchFolderPaths(
-                projectId,
-                keyword,
-                userContext.getId(),
-                userContext.getRole(),
-                userContext.getTenantId()
-        );
-
-        return ResponseEntity.ok(
-                ApiResponse.success("Search folder paths successfully", response, httpServletRequest.getRequestURI())
-        );
-    }
-
-    // ─── New endpoints ─────────────────────────────────────────────────────────
-
-    /**
-     * GET /api/v1/folders/project/{projectId}/members-for-acl
-     * Returns all project members (owner + members) available for Folder ACL selection.
-     */
-    @GetMapping("/project/{projectId}/members-for-acl")
-    @RequireRole({UserRole.TENANT_ADMIN, UserRole.USER})
-        @RequireFolderPermission(RequireFolderPermission.FolderAction.READ)
-    public ResponseEntity<ApiResponse<List<ProjectMemberForAclResponse>>> getProjectMembersForAcl(
-            @PathVariable("projectId") String projectId,
-            HttpServletRequest httpServletRequest
-    ) {
-        List<ProjectMemberForAclResponse> response = folderService.getProjectMembersForAcl(
-                projectId,
-                userContext.getId(),
-                userContext.getRole(),
-                userContext.getTenantId()
-        );
-
-        return ResponseEntity.ok(
-                ApiResponse.success("Get project members for ACL successfully", response, httpServletRequest.getRequestURI())
-        );
-    }
-
-    /**
-     * GET /api/v1/folders/{folderId}/acl
-     * Returns all ACL entries for a specific folder.
-     */
-    @GetMapping("/{folderId}/acl")
-    @RequireRole({UserRole.TENANT_ADMIN, UserRole.USER})
-        @RequireFolderPermission(RequireFolderPermission.FolderAction.READ)
-    public ResponseEntity<ApiResponse<List<FolderAclItemResponse>>> getFolderAcl(
             @PathVariable("folderId") String folderId,
             HttpServletRequest httpServletRequest
     ) {
-        List<FolderAclItemResponse> response = folderService.getFolderAcl(
+        FolderResponse folder = folderService.getFolderById(folderId);
+        return ResponseEntity.ok(
+                ApiResponse.success("Get folder successfully", folder, httpServletRequest.getRequestURI())
+        );
+    }
+
+    /**
+     * GET /api/v1/folders/{folderId}/children
+     * Lấy danh sách folder con trực tiếp (direct children) theo parentId.
+     * Hỗ trợ duyệt cây thư mục theo cấu trúc id.
+     */
+    @GetMapping("/{folderId}/children")
+    @RequireRole({UserRole.TENANT_ADMIN, UserRole.USER})
+    @RequireFolderPermission(RequireFolderPermission.FolderAction.READ)
+    public ResponseEntity<ApiResponse<List<FolderResponse>>> getChildFolders(
+            @PathVariable("folderId") String folderId,
+            @RequestParam("projectId") String projectId,
+            HttpServletRequest httpServletRequest
+    ) {
+        List<FolderResponse> children = folderService.getFoldersByParentId(
+                projectId,
                 folderId,
                 userContext.getId(),
                 userContext.getRole(),
                 userContext.getTenantId()
         );
-
         return ResponseEntity.ok(
-                ApiResponse.success("Get folder ACL successfully", response, httpServletRequest.getRequestURI())
+                ApiResponse.success("Get child folders successfully", children, httpServletRequest.getRequestURI())
         );
     }
 
-    /**
-     * PUT /api/v1/folders/{folderId}/acl/{userId}
-     * Upsert (create or update) a user's permission on a folder.
-     * Body: { "permission": "VIEW" | "EDIT" | "DENIED" }
-     */
-    @PutMapping("/{folderId}/acl/{userId}")
-    @RequireRole({UserRole.TENANT_ADMIN, UserRole.USER})
-    public ResponseEntity<ApiResponse<FolderAclItemResponse>> upsertFolderAcl(
-            @PathVariable("folderId") String folderId,
-            @PathVariable("userId") String userId,
-            @Valid @RequestBody UpsertFolderAclRequest request,
-            HttpServletRequest httpServletRequest
-    ) {
-        FolderAclItemResponse response = folderService.upsertFolderAcl(
-                folderId,
-                userId,
-                request,
-                userContext.getId(),
-                userContext.getRole(),
-                userContext.getTenantId()
-        );
-
-        return ResponseEntity.ok(
-                ApiResponse.success("Upsert folder ACL successfully", response, httpServletRequest.getRequestURI())
-        );
-    }
-
-    // ─── Folder rename & delete with permission check ───────────────────────────
+    // ─── Rename (PATCH) ───────────────────────────────────────────────────────
 
     /**
-     * PATCH /api/v1/folders/{folderId}/rename
+     * PATCH /api/v1/folders/{folderId}
      * Đổi tên folder.
-     * Yêu cầu actor có quyền WRITE (bit 2 – các giá trị hợp lệ: 2, 3, 6, 7).
+     * Yêu cầu actor có quyền WRITE (bit 2).
      * TENANT_ADMIN và project owner được bypass kiểm tra quyền.
      */
-    @PatchMapping("/{folderId}/rename")
+    @PatchMapping("/{folderId}")
     @RequireRole({UserRole.TENANT_ADMIN, UserRole.USER})
     @RequireFolderPermission(RequireFolderPermission.FolderAction.WRITE)
     public ResponseEntity<ApiResponse<FolderResponse>> renameFolder(
@@ -267,16 +110,18 @@ public class FolderController {
         );
     }
 
+    // ─── Delete ───────────────────────────────────────────────────────────────
+
     /**
-     * DELETE /api/v1/folders/{folderId}/actor
-     * Xóa folder (với kiểm tra quyền actor).
-     * Yêu cầu actor có quyền DELETE (bit 4 – các giá trị hợp lệ: 4, 5, 6, 7).
+     * DELETE /api/v1/folders/{folderId}
+     * Xóa folder.
+     * Yêu cầu actor có quyền DELETE (bit 4).
      * TENANT_ADMIN và project owner được bypass kiểm tra quyền.
      */
-    @DeleteMapping("/{folderId}/actor")
+    @DeleteMapping("/{folderId}")
     @RequireRole({UserRole.TENANT_ADMIN, UserRole.USER})
     @RequireFolderPermission(RequireFolderPermission.FolderAction.DELETE)
-    public ResponseEntity<ApiResponse<String>> deleteFolderByActor(
+    public ResponseEntity<ApiResponse<String>> deleteFolder(
             @PathVariable("folderId") String folderId,
             HttpServletRequest httpServletRequest
     ) {
@@ -290,5 +135,54 @@ public class FolderController {
                 ApiResponse.success("Delete folder successfully", httpServletRequest.getRequestURI())
         );
     }
-}
 
+    // ─── ACL ──────────────────────────────────────────────────────────────────
+
+    /**
+     * GET /api/v1/folders/{folderId}/acl
+     * Xem tất cả ACL entries của một folder.
+     */
+    @GetMapping("/{folderId}/acl")
+    @RequireRole({UserRole.TENANT_ADMIN, UserRole.USER})
+    @RequireFolderPermission(RequireFolderPermission.FolderAction.READ)
+    public ResponseEntity<ApiResponse<List<FolderAclItemResponse>>> getFolderAcl(
+            @PathVariable("folderId") String folderId,
+            HttpServletRequest httpServletRequest
+    ) {
+        List<FolderAclItemResponse> response = folderService.getFolderAcl(
+                folderId,
+                userContext.getId(),
+                userContext.getRole(),
+                userContext.getTenantId()
+        );
+        return ResponseEntity.ok(
+                ApiResponse.success("Get folder ACL successfully", response, httpServletRequest.getRequestURI())
+        );
+    }
+
+    /**
+     * PUT /api/v1/folders/{folderId}/acl/{userId}
+     * Upsert (tạo hoặc cập nhật) permission của một user trên folder.
+     * Body: { "permission": 1-7 (bitmask) }
+     */
+    @PutMapping("/{folderId}/acl/{userId}")
+    @RequireRole({UserRole.TENANT_ADMIN, UserRole.USER})
+    public ResponseEntity<ApiResponse<FolderAclItemResponse>> upsertFolderAcl(
+            @PathVariable("folderId") String folderId,
+            @PathVariable("userId") String userId,
+            @Valid @RequestBody UpsertFolderAclRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        FolderAclItemResponse response = folderService.upsertFolderAcl(
+                folderId,
+                userId,
+                request,
+                userContext.getId(),
+                userContext.getRole(),
+                userContext.getTenantId()
+        );
+        return ResponseEntity.ok(
+                ApiResponse.success("Upsert folder ACL successfully", response, httpServletRequest.getRequestURI())
+        );
+    }
+}

@@ -87,5 +87,17 @@ public interface FolderService extends BaseService<FolderEntity> {
 	 * AOP @RequireFolderPermission(DELETE) đã kiểm tra trước khi vào method này.
 	 */
 	void deleteFolderByActor(String folderId, String actorId, String actorRole, String actorTenantId);
+
+	/**
+	 * Lấy danh sách folder con trực tiếp (direct children) theo parentId.
+	 * parentFolderId = null → lấy các folder ở root (parentFolder IS NULL).
+	 */
+	List<FolderResponse> getFoldersByParentId(
+			String projectId,
+			String parentFolderId,
+			String actorId,
+			String actorRole,
+			String actorTenantId
+	);
 }
 

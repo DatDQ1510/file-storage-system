@@ -38,5 +38,20 @@ public interface FolderRepository extends BaseRepository<FolderEntity> {
      */
     @Query("select fa.permission from FolderAclEntity fa where fa.folder.id = :folderId and fa.user.id = :userId")
     Optional<Integer> findFolderAclPermission(@Param("folderId") String folderId, @Param("userId") String userId);
+
+    /**
+     * Lấy các folder con trực tiếp (direct children) theo parentId.
+     */
+    @Query("select f from FolderEntity f where f.project.id = :projectId and f.parentFolder.id = :parentFolderId order by f.nameFolder asc")
+    List<FolderEntity> findAllByProjectIdAndParentFolderId(
+            @Param("projectId") String projectId,
+            @Param("parentFolderId") String parentFolderId
+    );
+
+    /**
+     * Lấy các folder ở root (parentFolder IS NULL).
+     */
+    @Query("select f from FolderEntity f where f.project.id = :projectId and f.parentFolder is null order by f.nameFolder asc")
+    List<FolderEntity> findAllRootFoldersByProjectId(@Param("projectId") String projectId);
 }
 
