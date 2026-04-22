@@ -16,10 +16,10 @@ public abstract class BaseEntity {
 	@Column(name = "id", nullable = false, updatable = false)
 	private String id;
 
-	@Column(name= "createdAt" ,updatable = false, nullable = false)
+	@Column(name = "createdAt", updatable = false, nullable = false)
 	private LocalDateTime createdAt;
 
-	@Column(name= "updatedAt" ,nullable = false)
+	@Column(name = "updatedAt", nullable = false)
 	private LocalDateTime updatedAt;
 
 	@PrePersist

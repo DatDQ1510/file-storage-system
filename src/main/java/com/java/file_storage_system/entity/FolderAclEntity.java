@@ -1,17 +1,16 @@
 package com.java.file_storage_system.entity;
 
-import com.java.file_storage_system.constant.FolderPermission;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-
-import java.util.UUID;
+import lombok.ToString;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -28,13 +27,24 @@ import java.util.UUID;
 )
 public class FolderAclEntity extends BaseEntity {
 
-    @Column(name = "folderId", nullable = false)
-    private UUID folderId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "folderId", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private FolderEntity folder;
 
-    @Column(name = "userId", nullable = false)
-    private UUID userId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "userId", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private UserEntity user;
 
-    @Enumerated(EnumType.STRING)
+    /**
+     * Bitmask permission: 1=READ, 2=WRITE, 4=DELETE
+     * Synchronized with UserProjectEntity.permission (no MANAGE_MEMBER bit for folders).
+     * Valid range: 1–7.
+     */
     @Column(name = "permission", nullable = false)
-    private FolderPermission permission;
+    private Integer permission;
 }
+

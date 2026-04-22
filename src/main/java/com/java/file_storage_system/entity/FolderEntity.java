@@ -61,4 +61,9 @@ public class FolderEntity extends BaseEntity{
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private List<FileEntity> files = new ArrayList<>();
+
+    @OneToMany(mappedBy = "folder", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private List<FolderAclEntity> aclEntries = new ArrayList<>();
 }

@@ -3,10 +3,13 @@ package com.java.file_storage_system.service;
 import com.java.file_storage_system.dto.project.ProjectRequest;
 import com.java.file_storage_system.dto.project.ProjectPageResponse;
 import com.java.file_storage_system.dto.project.ProjectResponse;
-import com.java.file_storage_system.dto.project.member.AddProjectMemberRequest;
+import com.java.file_storage_system.dto.project.UpdateProjectRequest;
 import com.java.file_storage_system.dto.project.member.AssignProjectMemberRequest;
 import com.java.file_storage_system.dto.project.member.ProjectMemberResponse;
+import com.java.file_storage_system.dto.project.member.UpdateProjectMemberPermissionRequest;
 import com.java.file_storage_system.entity.ProjectEntity;
+
+import java.util.List;
 
 public interface ProjectService extends BaseService<ProjectEntity> {
 
@@ -33,19 +36,24 @@ public interface ProjectService extends BaseService<ProjectEntity> {
      */
     ProjectResponse getProjectById(String projectId, String currentUserId, String currentUserRole, String currentTenantId);
 
-    ProjectPageResponse getAllProjectsByTenantAdmin(String tenantAdminId, int page, int size);
-
     ProjectPageResponse getAllProjectsByUser(String userId, int page, int size);
 
     ProjectPageResponse searchProjectsByTenantAdmin(String tenantAdminId, String keyword, int page, int size);
 
-    ProjectMemberResponse addUserToProject(
+        ProjectResponse updateProject(
             String projectId,
-            AddProjectMemberRequest request,
+            UpdateProjectRequest request,
             String actorId,
             String actorRole,
             String actorTenantId
-    );
+        );
+
+        void deleteProject(
+            String projectId,
+            String actorId,
+            String actorRole,
+            String actorTenantId
+        );
 
         ProjectMemberResponse assignMemberToProject(
             String projectId,
@@ -54,4 +62,28 @@ public interface ProjectService extends BaseService<ProjectEntity> {
             String actorRole,
             String actorTenantId
         );
+
+    List<ProjectMemberResponse> getProjectMembers(
+            String projectId,
+            String actorId,
+            String actorRole,
+            String actorTenantId
+    );
+
+    ProjectMemberResponse updateProjectMemberPermission(
+            String projectId,
+            String memberUserId,
+            UpdateProjectMemberPermissionRequest request,
+            String actorId,
+            String actorRole,
+            String actorTenantId
+    );
+
+    void removeProjectMember(
+            String projectId,
+            String memberUserId,
+            String actorId,
+            String actorRole,
+            String actorTenantId
+    );
 }

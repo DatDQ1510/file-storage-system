@@ -5,9 +5,10 @@ import com.java.file_storage_system.constant.ProjectStatus;
 import com.java.file_storage_system.dto.project.ProjectPageResponse;
 import com.java.file_storage_system.dto.project.ProjectRequest;
 import com.java.file_storage_system.dto.project.ProjectResponse;
-import com.java.file_storage_system.dto.project.member.AddProjectMemberRequest;
+import com.java.file_storage_system.dto.project.UpdateProjectRequest;
 import com.java.file_storage_system.dto.project.member.AssignProjectMemberRequest;
 import com.java.file_storage_system.dto.project.member.ProjectMemberResponse;
+import com.java.file_storage_system.dto.project.member.UpdateProjectMemberPermissionRequest;
 import com.java.file_storage_system.entity.ProjectEntity;
 import com.java.file_storage_system.entity.TenantAdminEntity;
 import com.java.file_storage_system.entity.UserEntity;
@@ -26,6 +27,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 @Slf4j
@@ -54,7 +57,7 @@ public class ProjectServiceImpl extends BaseServiceImpl<ProjectEntity, ProjectRe
         String ownerId = request.ownerId();
         UserEntity owner = getOwner(ownerId);
 
-        // 3. Kiểm tra Owner có phải thành viên của tenant của TenantAdmin không
+        // 3. Kiểm tra Owner có phải thành viên của tenant không
         if (!owner.getTenant().getId().equals(tenantAdmin.getTenant().getId())) {
             log.warn("Owner {} không phải thành viên của tenant {}", request.ownerId(), tenantAdmin.getTenant().getId());
             throw new ForbiddenException(MessageConstants.PROJECT_OWNER_NOT_MEMBER);
@@ -82,36 +85,6 @@ public class ProjectServiceImpl extends BaseServiceImpl<ProjectEntity, ProjectRe
     }
 
     @Override
-    public ProjectMemberResponse addUserToProject(
-            String projectId,
-            AddProjectMemberRequest request,
-            String actorId,
-            String actorRole,
-            String actorTenantId
-    ) {
-        log.info("addUserToProject called: projectId={}, actorId={}, actorRole={}, targetUserId={}",
-            projectId, actorId, actorRole, request.userId());
-
-        ProjectEntity project = repository.findById(projectId)
-                .orElseThrow(() -> new ResourceNotFoundException(MessageConstants.PROJECT_NOT_FOUND));
-
-        validateActorCanManageMembership(project, actorId, actorRole, actorTenantId);
-
-        UserEntity userToAdd = getOwner(request.userId());
-        validateUserSameTenant(project, userToAdd);
-
-        if (userProjectRepository.existsByUserIdAndProjectId(userToAdd.getId(), project.getId())) {
-            throw new ConflictException(MessageConstants.PROJECT_USER_ALREADY_MEMBER);
-        }
-
-        int permission = normalizePermission(request.permission());
-        UserEntity grantedBy = resolveGrantedByUser(actorId, actorRole);
-
-        UserProjectEntity membership = createProjectMembership(project, userToAdd, permission, grantedBy);
-        return mapToProjectMemberResponse(membership);
-    }
-
-    @Override
     public ProjectMemberResponse assignMemberToProject(
             String projectId,
             AssignProjectMemberRequest request,
@@ -125,20 +98,107 @@ public class ProjectServiceImpl extends BaseServiceImpl<ProjectEntity, ProjectRe
         ProjectEntity project = repository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException(MessageConstants.PROJECT_NOT_FOUND));
 
-        validateActorCanManageMembership(project, actorId, actorRole, actorTenantId);
+        validateActorCanManageMembership(project, actorId, actorRole, actorTenantId); // check xem user có quyền của mời thành viên không
 
-        UserEntity userToAdd = getOwner(request.memberUserId());
-        validateUserSameTenant(project, userToAdd);
+        UserEntity userToAdd = getUser(request.memberUserId()); // check member
+        validateUserSameTenant(project, userToAdd); // check xem có cùng tenant không
 
-        if (userProjectRepository.existsByUserIdAndProjectId(userToAdd.getId(), project.getId())) {
+        if (userProjectRepository.existsByUserIdAndProjectId(userToAdd.getId(), project.getId())) { // check xem user có tồn tại trong project chưa
             throw new ConflictException(MessageConstants.PROJECT_USER_ALREADY_MEMBER);
         }
 
-        int permission = normalizePermission(request.permission());
-        UserEntity grantedBy = resolveGrantedByUser(actorId, actorRole);
+        int permission = normalizePermission(request.permission()); // lấy quyền được truyền xuống
+        UserEntity grantedBy = resolveGrantedByUser(actorId, actorRole); // check người chủ mời thành viên mới
 
         UserProjectEntity membership = createProjectMembership(project, userToAdd, permission, grantedBy);
         return mapToProjectMemberResponse(membership);
+    }
+
+    @Override
+    public List<ProjectMemberResponse> getProjectMembers(
+            String projectId,
+            String actorId,
+            String actorRole,
+            String actorTenantId
+    ) {
+        ProjectEntity project = repository.findById(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException(MessageConstants.PROJECT_NOT_FOUND));
+
+        validateProjectAccess(project, actorId, actorRole, actorTenantId);
+
+        List<ProjectMemberResponse> members = userProjectRepository.findAllByProjectId(project.getId())
+                .stream()
+                .map(this::mapToProjectMemberResponse)
+                .toList();
+
+        boolean ownerIncluded = members.stream()
+                .anyMatch(member -> project.getOwner().getId().equals(member.userId()));
+
+        if (!ownerIncluded) {
+            members = new ArrayList<>(members);
+            members.add(new ProjectMemberResponse(
+                    null,
+                    project.getId(),
+                    project.getOwner().getId(),
+                    project.getOwner().getUserName(),
+                    PERMISSION_FULL,
+                    null
+            ));
+        }
+
+        return members.stream()
+                .sorted(
+                        Comparator.comparing((ProjectMemberResponse member) ->
+                                !project.getOwner().getId().equals(member.userId()))
+                                .thenComparing(member -> member.userName() == null ? "" : member.userName().toLowerCase())
+                )
+                .toList();
+    }
+
+    @Override
+    public ProjectMemberResponse updateProjectMemberPermission(
+            String projectId,
+            String memberUserId,
+            UpdateProjectMemberPermissionRequest request,
+            String actorId,
+            String actorRole,
+            String actorTenantId
+    ) {
+        ProjectEntity project = repository.findById(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException(MessageConstants.PROJECT_NOT_FOUND));
+
+        validateActorCanManageMembership(project, actorId, actorRole, actorTenantId);
+        validateMemberIsNotProjectOwner(project, memberUserId);
+
+        UserProjectEntity member = userProjectRepository.findByUserIdAndProjectId(memberUserId, projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project member not found"));
+
+        int permission = normalizePermission(request.permission());
+        member.setPermission(permission);
+        member.setGrantedByUser(resolveGrantedByUser(actorId, actorRole));
+
+        UserProjectEntity updatedMember = userProjectRepository.save(member);
+        return mapToProjectMemberResponse(updatedMember);
+    }
+
+    @Override
+    public void removeProjectMember(
+            String projectId,
+            String memberUserId,
+            String actorId,
+            String actorRole,
+            String actorTenantId
+    ) {
+        ProjectEntity project = repository.findById(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException(MessageConstants.PROJECT_NOT_FOUND));
+
+        validateActorCanManageMembership(project, actorId, actorRole, actorTenantId);
+        validateMemberIsNotProjectOwner(project, memberUserId);
+
+        UserProjectEntity member = userProjectRepository.findByUserIdAndProjectId(memberUserId, projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project member not found"));
+
+        userProjectRepository.delete(member);
     }
 
     @Override
@@ -151,18 +211,43 @@ public class ProjectServiceImpl extends BaseServiceImpl<ProjectEntity, ProjectRe
     }
 
     @Override
-    public ProjectPageResponse getAllProjectsByTenantAdmin(String tenantAdminId, int page, int size) {
-        getTenantAdmin(tenantAdminId);
+        public ProjectResponse updateProject(
+            String projectId,
+            UpdateProjectRequest request,
+            String actorId,
+            String actorRole,
+            String actorTenantId
+        ) {
+        ProjectEntity project = repository.findById(projectId)
+            .orElseThrow(() -> new ResourceNotFoundException(MessageConstants.PROJECT_NOT_FOUND));
 
-        int normalizedPage = Math.max(0, page);
-        int normalizedSize = Math.max(1, Math.min(size, 100));
+        validateActorCanAdminProject(project, actorId, actorRole, actorTenantId);
 
-        Page<ProjectEntity> projectPage = repository.findAllByTenantAdminId(
-                tenantAdminId,
-                PageRequest.of(normalizedPage, normalizedSize)
-        );
+        String normalizedName = request.nameProject().trim();
+        boolean duplicatedName = repository.existsByNameProjectAndTenantId(normalizedName, project.getTenant().getId())
+            && !normalizedName.equals(project.getNameProject());
 
-        return mapToPageResponse(projectPage);
+        if (duplicatedName) {
+            throw new ConflictException(MessageConstants.PROJECT_ALREADY_EXISTS);
+        }
+
+        project.setNameProject(normalizedName);
+        ProjectEntity updatedProject = repository.save(project);
+        return mapToResponse(updatedProject, actorId, actorRole, actorTenantId);
+        }
+
+        @Override
+        public void deleteProject(
+            String projectId,
+            String actorId,
+            String actorRole,
+            String actorTenantId
+        ) {
+        ProjectEntity project = repository.findById(projectId)
+            .orElseThrow(() -> new ResourceNotFoundException(MessageConstants.PROJECT_NOT_FOUND));
+
+        validateActorCanAdminProject(project, actorId, actorRole, actorTenantId);
+        repository.delete(project);
     }
 
     @Override
@@ -226,6 +311,21 @@ public class ProjectServiceImpl extends BaseServiceImpl<ProjectEntity, ProjectRe
     }
 
 
+    private UserEntity getUser(String userId) {
+        if (userId == null || userId.isBlank()) {
+            log.warn("getOwner called with blank userId");
+            throw new ResourceNotFoundException("User không tồn tại");
+        }
+
+        String normalizedOwnerId = userId.trim();
+        return userRepository.findById(normalizedOwnerId)
+                .orElseThrow(() -> {
+                    log.warn("User not found by id: {}", normalizedOwnerId);
+                    return new ResourceNotFoundException("User không tồn tại");
+                });
+    }
+
+
         private ProjectResponse mapToResponse(ProjectEntity project) {
         return ProjectResponse.builder()
             .id(project.getId())
@@ -278,7 +378,7 @@ public class ProjectServiceImpl extends BaseServiceImpl<ProjectEntity, ProjectRe
             boolean isMember = currentUserId != null && userProjectRepository.existsByUserIdAndProjectId(currentUserId, project.getId());
 
             if (!isOwner && !isMember) {
-                throw new ForbiddenException("User does not have access to this project");
+                throw new ForbiddenException("User không có quyền truy cập project này");
             }
 
             if (currentTenantId != null && !currentTenantId.equals(project.getTenant().getId())) {
@@ -302,13 +402,24 @@ public class ProjectServiceImpl extends BaseServiceImpl<ProjectEntity, ProjectRe
         }
 
         if ("TENANT_ADMIN".equals(currentUserRole)) {
-            return currentTenantId != null && currentTenantId.equals(project.getTenant().getId());
+            return false;
         }
 
-        return "USER".equals(currentUserRole)
-                && currentUserId != null
-                && currentUserId.equals(project.getOwner().getId())
-                && (currentTenantId == null || currentTenantId.equals(project.getTenant().getId()));
+        if (!"USER".equals(currentUserRole) || currentUserId == null) {
+            return false;
+        }
+
+        if (currentTenantId != null && !currentTenantId.equals(project.getTenant().getId())) {
+            return false;
+        }
+
+        if (currentUserId.equals(project.getOwner().getId())) {
+            return true;
+        }
+
+        return userProjectRepository.findByUserIdAndProjectId(currentUserId, project.getId())
+                .map(userProject -> hasPermission(userProject.getPermission(), PERMISSION_MANAGE_MEMBER))
+                .orElse(false);
     }
 
     private ProjectPageResponse mapToPageResponse(Page<ProjectEntity> projectPage) {
@@ -349,19 +460,24 @@ public class ProjectServiceImpl extends BaseServiceImpl<ProjectEntity, ProjectRe
 
     private void validateActorCanManageMembership(ProjectEntity project, String actorId, String actorRole, String actorTenantId) {
         if ("TENANT_ADMIN".equals(actorRole)) {
-            TenantAdminEntity tenantAdmin = getTenantAdmin(actorId);
-            if (!tenantAdmin.getTenant().getId().equals(project.getTenant().getId())) {
-                throw new ForbiddenException("TenantAdmin không cùng tenant với project");
-            }
-            return;
+            throw new ForbiddenException("Tenant admin không có quyền chỉnh sửa thành viên project");
         }
 
         if ("USER".equals(actorRole)) {
-            if (!project.getOwner().getId().equals(actorId)) {
-                throw new ForbiddenException("Chỉ owner của project mới có quyền thêm thành viên");
-            }
             if (actorTenantId == null || !actorTenantId.equals(project.getTenant().getId())) {
                 throw new ForbiddenException("User không cùng tenant với project");
+            }
+
+            if (project.getOwner().getId().equals(actorId)) {
+                return;
+            }
+
+            boolean hasManagePermission = userProjectRepository.findByUserIdAndProjectId(actorId, project.getId())
+                    .map(userProject -> hasPermission(userProject.getPermission(), PERMISSION_MANAGE_MEMBER))
+                    .orElse(false);
+
+            if (!hasManagePermission) {
+                throw new ForbiddenException("User không có quyền quản lý thành viên trong project");
             }
             return;
         }
@@ -372,6 +488,28 @@ public class ProjectServiceImpl extends BaseServiceImpl<ProjectEntity, ProjectRe
     private void validateUserSameTenant(ProjectEntity project, UserEntity userToAdd) {
         if (!project.getTenant().getId().equals(userToAdd.getTenant().getId())) {
             throw new ForbiddenException("User thêm vào phải cùng tenant với project");
+        }
+    }
+
+    private void validateActorCanAdminProject(ProjectEntity project, String actorId, String actorRole, String actorTenantId) {
+        if (!"USER".equals(actorRole)) {
+            throw new ForbiddenException("Role không được phép quản trị project");
+        }
+
+        if (actorTenantId == null || !actorTenantId.equals(project.getTenant().getId())) {
+            throw new ForbiddenException("User không cùng tenant với project");
+        }
+
+        if (project.getOwner().getId().equals(actorId)) {
+            return;
+        }
+
+        boolean hasAdminPermission = userProjectRepository.findByUserIdAndProjectId(actorId, project.getId())
+                .map(userProject -> hasPermission(userProject.getPermission(), PERMISSION_MANAGE_MEMBER))
+                .orElse(false);
+
+        if (!hasAdminPermission) {
+            throw new ForbiddenException("User không có quyền admin để quản trị project");
         }
     }
 
@@ -391,7 +529,7 @@ public class ProjectServiceImpl extends BaseServiceImpl<ProjectEntity, ProjectRe
         if (!"USER".equals(actorRole)) {
             return null;
         }
-        return getOwner(actorId);
+        return getUser(actorId);
     }
 
     private ProjectMemberResponse mapToProjectMemberResponse(UserProjectEntity membership) {
@@ -405,5 +543,18 @@ public class ProjectServiceImpl extends BaseServiceImpl<ProjectEntity, ProjectRe
                 membership.getPermission(),
                 grantedBy == null ? null : grantedBy.getId()
         );
+    }
+
+    private void validateMemberIsNotProjectOwner(ProjectEntity project, String memberUserId) {
+        if (project.getOwner().getId().equals(memberUserId)) {
+            throw new ForbiddenException("Project owner cannot be updated or removed");
+        }
+    }
+
+    private boolean hasPermission(Integer permission, int expectedPermission) {
+        if (permission == null) {
+            return false;
+        }
+        return (permission & expectedPermission) == expectedPermission;
     }
 }
