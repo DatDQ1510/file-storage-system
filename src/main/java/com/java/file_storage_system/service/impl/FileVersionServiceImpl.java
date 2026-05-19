@@ -41,7 +41,7 @@ public class FileVersionServiceImpl extends BaseServiceImpl<FileVersionEntity, F
         FileVersionEntity fileVersion = new FileVersionEntity();
         fileVersion.setFileVersion(request.fileVersion());
         fileVersion.setFileHash(request.fileHash());
-        fileVersion.setSizeFile(request.sizeFile());
+        fileVersion.setSizeFile(request.sizeFile() == null ? null : Math.round(request.sizeFile()));
         fileVersion.setFile(file);
 
         return mapToResponse(repository.save(fileVersion));
@@ -55,7 +55,7 @@ public class FileVersionServiceImpl extends BaseServiceImpl<FileVersionEntity, F
 
         fileVersion.setFileVersion(request.fileVersion());
         fileVersion.setFileHash(request.fileHash());
-        fileVersion.setSizeFile(request.sizeFile());
+        fileVersion.setSizeFile(request.sizeFile() == null ? null : Math.round(request.sizeFile()));
         fileVersion.setFile(file);
 
         return mapToResponse(repository.save(fileVersion));
@@ -85,7 +85,7 @@ public class FileVersionServiceImpl extends BaseServiceImpl<FileVersionEntity, F
                 fileVersion.getId(),
                 fileVersion.getFileVersion(),
                 fileVersion.getFileHash(),
-                fileVersion.getSizeFile(),
+            fileVersion.getSizeFile() == null ? null : fileVersion.getSizeFile().doubleValue(),
                 fileVersion.getFile().getId(),
                 fileVersion.getCreatedAt(),
                 fileVersion.getUpdatedAt()
