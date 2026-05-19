@@ -98,6 +98,8 @@ public class GlobalException {
                         message = "Duplicate value violates unique constraint";
                 } else if (normalized.contains("foreign key") || normalized.contains("violates foreign key")) {
                         message = "Invalid reference to related resource";
+                } else if (normalized.contains("miniourl")) {
+                        message = "minIOUrl is required";
                 } else if (normalized.contains("not-null") || normalized.contains("null value")) {
                         message = "Required field is missing";
                 } else {
