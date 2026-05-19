@@ -3,12 +3,16 @@ package com.java.file_storage_system.controller;
 import com.java.file_storage_system.constant.UserRole;
 import com.java.file_storage_system.custom.RequireRole;
 import com.java.file_storage_system.dto.tenant.AllTenantPageResponse;
+import com.java.file_storage_system.dto.tenant.activation.TenantActivationCompleteRequest;
+import com.java.file_storage_system.dto.tenant.activation.TenantActivationCompleteResponse;
+import com.java.file_storage_system.dto.tenant.activation.TenantActivationTokenInfo;
 import com.java.file_storage_system.dto.tenant.CreateTenantRequest;
 import com.java.file_storage_system.dto.tenant.TenantResponse;
 import com.java.file_storage_system.dto.tenant.UpdateTenantRequest;
 import com.java.file_storage_system.entity.TenantEntity;
 import com.java.file_storage_system.exception.ResourceNotFoundException;
 import com.java.file_storage_system.payload.ApiResponse;
+import com.java.file_storage_system.service.TenantActivationService;
 import com.java.file_storage_system.service.TenantService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -37,6 +41,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class TenantController {
 
     private final TenantService tenantService;
+    private final TenantActivationService tenantActivationService;
 
     @GetMapping
 	@RequireRole(UserRole.SYSTEM_ADMIN)
@@ -120,6 +125,20 @@ public class TenantController {
 			: "Domain tenant is available";
 
 		return ResponseEntity.ok(ApiResponse.success(message, exists, httpServletRequest.getRequestURI()));
+	}
+
+	@GetMapping("/activation/validate")
+	public ResponseEntity<TenantActivationTokenInfo> validateTenantActivationToken(
+	    @RequestParam("token") @NotBlank(message = "token is required") String token
+	) {
+		return ResponseEntity.ok(tenantActivationService.validateActivationToken(token));
+	}
+
+	@PostMapping("/activation/complete")
+	public ResponseEntity<TenantActivationCompleteResponse> completeTenantActivation(
+	    @Valid @RequestBody TenantActivationCompleteRequest request
+	) {
+		return ResponseEntity.ok(tenantActivationService.completeActivation(request));
 	}
 
     private TenantResponse mapToResponse(TenantEntity tenant) {
