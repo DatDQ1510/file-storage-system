@@ -17,7 +17,7 @@ public record CreateFileRequest(
         @Positive(message = "sizeFile must be greater than 0")
         Double sizeFile,
 
-        JsonNode extraInfo,
+        java.util.Map<String, Object> extraInfo,
 
         @NotBlank(message = "tenantId is required")
         String tenantId,

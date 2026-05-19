@@ -4,8 +4,8 @@ import java.time.LocalDateTime;
 
 public record FileChunkMapResponse(
         String id,
-        Integer versionId,
-        Integer chunkId,
+        String versionId,
+        String chunkId,
         Integer orderIndex,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
