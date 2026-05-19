@@ -20,6 +20,7 @@ import com.java.file_storage_system.repository.TenantAdminRepository;
 import com.java.file_storage_system.repository.TenantPlanRepository;
 import com.java.file_storage_system.repository.TenantRepository;
 import com.java.file_storage_system.service.SystemAdminService;
+import com.java.file_storage_system.service.TenantActivationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -45,6 +46,7 @@ public class SystemAdminServiceImpl extends BaseServiceImpl<SystemAdminEntity, S
     private final TenantAdminRepository tenantAdminRepository;
     private final SubscriptionPlanRepository subscriptionPlanRepository;
     private final TenantPlanRepository tenantPlanRepository;
+    private final TenantActivationService tenantActivationService;
 
     @Value("${app.security.system-admin-bootstrap-secret:}")
     private String configuredBootstrapSecret;
@@ -103,13 +105,13 @@ public class SystemAdminServiceImpl extends BaseServiceImpl<SystemAdminEntity, S
         tenant.setStatusTenant(TenantStatus.ACTIVE);
         TenantEntity savedTenant = tenantRepository.save(tenant);
 
-        String generatedPassword = generatePassword();
+        String temporaryPassword = generatePassword();
 
         TenantAdminEntity tenantAdmin = new TenantAdminEntity();
         tenantAdmin.setUserName(normalizedUserName);
         tenantAdmin.setEmail(normalizedEmail);
         tenantAdmin.setPhoneNumber(normalizedPhone);
-        tenantAdmin.setHashedPassword(passwordEncoder.encode(generatedPassword));
+        tenantAdmin.setHashedPassword(passwordEncoder.encode(temporaryPassword));
         tenantAdmin.setTenant(savedTenant);
         TenantAdminEntity savedTenantAdmin = tenantAdminRepository.save(tenantAdmin);
 
@@ -128,6 +130,8 @@ public class SystemAdminServiceImpl extends BaseServiceImpl<SystemAdminEntity, S
         tenantPlan.setTenant(savedTenant);
         tenantPlan.setPlan(plan);
         TenantPlan savedTenantPlan = tenantPlanRepository.save(tenantPlan);
+
+        tenantActivationService.createActivationInvitation(savedTenantAdmin);
 
         return new InitialTenantSetupResponse(
                 savedTenant.getId(),
@@ -180,17 +184,16 @@ public class SystemAdminServiceImpl extends BaseServiceImpl<SystemAdminEntity, S
         return value == null ? null : value.trim();
     }
 
-    private String normalizeToLower(String value) {
+    private String normalizeToLower(String value) {s
         return value == null ? null : value.trim().toLowerCase(Locale.ROOT);
     }
 
     private String generatePassword() {
-//        StringBuilder password = new StringBuilder(GENERATED_PASSWORD_LENGTH);
-//        for (int i = 0; i < GENERATED_PASSWORD_LENGTH; i++) {
-//            int index = SECURE_RANDOM.nextInt(PASSWORD_CHARS.length());
-//            password.append(PASSWORD_CHARS.charAt(index));
-//        }
-//        return password.toString();
-        return "1qazXSW@#EDC";
+        StringBuilder password = new StringBuilder(GENERATED_PASSWORD_LENGTH);
+        for (int i = 0; i < GENERATED_PASSWORD_LENGTH; i++) {
+            int index = SECURE_RANDOM.nextInt(PASSWORD_CHARS.length());
+            password.append(PASSWORD_CHARS.charAt(index));
+        }
+        return password.toString();
     }
 }
