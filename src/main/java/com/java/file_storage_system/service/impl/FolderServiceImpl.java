@@ -361,7 +361,11 @@ public class FolderServiceImpl extends BaseServiceImpl<FolderEntity, FolderRepos
 
         validateActorCanAccessProject(folder.getProject(), actorId, actorRole, actorTenantId);
 
-        repository.delete(folder);
+        // Soft delete: mark with deletedAt timestamp instead of hard delete
+        if (folder.getDeletedAt() == null) {
+            folder.setDeletedAt(java.time.LocalDateTime.now());
+            repository.save(folder);
+        }
     }
 
     @Override

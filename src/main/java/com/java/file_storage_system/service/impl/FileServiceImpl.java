@@ -1,9 +1,11 @@
 package com.java.file_storage_system.service.impl;
 
 import com.java.file_storage_system.constant.MessageConstants;
+import com.java.file_storage_system.constant.FileStatus;
 import com.java.file_storage_system.context.UserContext;
 import com.java.file_storage_system.dto.file.CreateFileRequest;
 import com.java.file_storage_system.dto.file.FileResponse;
+import com.java.file_storage_system.dto.file.RecycleBinFileResponse;
 import com.java.file_storage_system.dto.file.UpdateFileRequest;
 import com.java.file_storage_system.entity.FileEntity;
 import com.java.file_storage_system.entity.FolderEntity;
@@ -26,7 +28,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +39,13 @@ public class FileServiceImpl extends BaseServiceImpl<FileEntity, FileRepository>
     private final FileShareRepository fileShareRepository;
     private final UserProjectRepository userProjectRepository;
     private final UserContext userContext;
+    @Override
+    @Transactional
+    public FileResponse renameFile(String fileId, String newName) {
+        FileEntity file = findFile(fileId);
+        file.setNameFile(normalizeRequired(newName, "nameFile"));
+        return mapToResponse(repository.save(file));
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -47,7 +55,13 @@ public class FileServiceImpl extends BaseServiceImpl<FileEntity, FileRepository>
         // Nên ở đây chỉ cần return accessible files
         // Tuy nhiên, hiện tại chưa có cách để biết user vừa được check → return all
         // TODO: Implement sophisticated filtering khi cần (query files by user's accessible folders/projects/fileshare)
-        return repository.findAll().stream().map(this::mapToResponse).toList();
+        return repository.findAllByDeletedAtIsNull().stream().map(this::mapToResponse).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FileResponse> getFilesByFolder(String folderId) {
+        return repository.findAllByFolder_IdAndDeletedAtIsNull(folderId).stream().map(this::mapToResponse).toList();
     }
 
     @Override
@@ -106,15 +120,69 @@ public class FileServiceImpl extends BaseServiceImpl<FileEntity, FileRepository>
     @Override
     @Transactional
     public void deleteFile(String fileId) {
-        if (!repository.existsById(fileId)) {
-            throw ResourceNotFoundException.byField("File", "id", fileId);
+        FileEntity file = findFile(fileId);
+        if (file.getDeletedAt() == null) {
+            file.setDeletedAt(LocalDateTime.now());
+            file.setStatusFile(FileStatus.DELETED);
+            repository.save(file);
         }
-        repository.deleteById(fileId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RecycleBinFileResponse> getRecycleBinFiles() {
+        return repository.findAllByTenant_IdAndDeletedAtIsNotNullOrderByDeletedAtDesc(userContext.getTenantId())
+                .stream()
+                .map(this::mapToRecycleBinResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public void restoreFile(String fileId) {
+        FileEntity file = findFileByIdForCurrentTenant(fileId);
+        if (file.getDeletedAt() != null) {
+            file.setDeletedAt(null);
+            file.setStatusFile(FileStatus.APPROVED);
+            repository.save(file);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void permanentlyDeleteFile(String fileId) {
+        FileEntity file = findFileByIdForCurrentTenant(fileId);
+        if (file.getDeletedAt() == null) {
+            throw ConflictException.withMessage("File is not in recycle bin");
+        }
+        repository.delete(file);
+    }
+
+    @Override
+    @Transactional
+    public void emptyRecycleBin() {
+        List<FileEntity> deletedFiles = repository.findAllByTenant_IdAndDeletedAtIsNotNullOrderByDeletedAtDesc(userContext.getTenantId());
+        if (deletedFiles.isEmpty()) {
+            return;
+        }
+        repository.deleteAllInBatch(deletedFiles);
     }
 
     private FileEntity findFile(String fileId) {
-        return repository.findById(fileId)
+        return repository.findByIdAndDeletedAtIsNull(fileId)
                 .orElseThrow(() -> ResourceNotFoundException.byField("File", "id", fileId));
+    }
+
+    private FileEntity findFileByIdForCurrentTenant(String fileId) {
+        FileEntity file = repository.findById(fileId)
+                .orElseThrow(() -> ResourceNotFoundException.byField("File", "id", fileId));
+
+        String currentTenantId = userContext.getTenantId();
+        if (!file.getTenant().getId().equals(currentTenantId)) {
+            throw new ForbiddenException("You do not have access to this file");
+        }
+
+        return file;
     }
 
     private TenantEntity findTenant(String tenantId) {
@@ -176,6 +244,20 @@ public class FileServiceImpl extends BaseServiceImpl<FileEntity, FileRepository>
         );
     }
 
+    private RecycleBinFileResponse mapToRecycleBinResponse(FileEntity file) {
+        return new RecycleBinFileResponse(
+                file.getId(),
+                file.getNameFile(),
+                file.getSizeFile(),
+                file.getStatusFile(),
+                file.getFolder().getId(),
+                file.getFolder().getPath(),
+                file.getFolder().getProject().getId(),
+                file.getDeletedAt(),
+                file.getUpdatedAt()
+        );
+    }
+
     /**
      * Helper: Lấy effective permission của user cho file.
      * 1. Check FileShare (valid & not expired)
@@ -186,13 +268,11 @@ public class FileServiceImpl extends BaseServiceImpl<FileEntity, FileRepository>
     public Integer resolveEffectiveFilePermission(String fileId, String userId) {
         FileEntity file = findFile(fileId);
         FolderEntity folder = file.getFolder();
-        UUID fileUuid = UUID.fromString(fileId);
-        UUID userUuid = UUID.fromString(userId);
 
         // 1. Check FileShare first
         var fileShareOpt = fileShareRepository.findValidFileShare(
-                fileUuid,
-                userUuid,
+            fileId,
+            userId,
                 LocalDateTime.now()
         );
 

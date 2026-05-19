@@ -3,9 +3,13 @@ package com.java.file_storage_system.service.impl;
 import com.java.file_storage_system.dto.filechunkmap.CreateFileChunkMapRequest;
 import com.java.file_storage_system.dto.filechunkmap.FileChunkMapResponse;
 import com.java.file_storage_system.dto.filechunkmap.UpdateFileChunkMapRequest;
+import com.java.file_storage_system.entity.ChunkEntity;
 import com.java.file_storage_system.entity.FileChunkMapEntity;
+import com.java.file_storage_system.entity.FileVersionEntity;
 import com.java.file_storage_system.exception.ResourceNotFoundException;
+import com.java.file_storage_system.repository.ChunkRepository;
 import com.java.file_storage_system.repository.FileChunkMapRepository;
+import com.java.file_storage_system.repository.FileVersionRepository;
 import com.java.file_storage_system.service.FileChunkMapService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,8 +19,17 @@ import java.util.List;
 @Service
 public class FileChunkMapServiceImpl extends BaseServiceImpl<FileChunkMapEntity, FileChunkMapRepository> implements FileChunkMapService {
 
-    public FileChunkMapServiceImpl(FileChunkMapRepository repository) {
+    private final FileVersionRepository fileVersionRepository;
+    private final ChunkRepository chunkRepository;
+
+    public FileChunkMapServiceImpl(
+            FileChunkMapRepository repository,
+            FileVersionRepository fileVersionRepository,
+            ChunkRepository chunkRepository
+    ) {
         super(repository);
+        this.fileVersionRepository = fileVersionRepository;
+        this.chunkRepository = chunkRepository;
     }
 
     @Override
@@ -36,10 +49,16 @@ public class FileChunkMapServiceImpl extends BaseServiceImpl<FileChunkMapEntity,
     @Override
     @Transactional
     public FileChunkMapResponse createFileChunkMap(CreateFileChunkMapRequest request) {
+        FileVersionEntity fileVersion = fileVersionRepository.findById(request.versionId())
+            .orElseThrow(() -> new ResourceNotFoundException("FileVersion not found with id: " + request.versionId()));
+        ChunkEntity chunk = chunkRepository.findById(request.chunkId())
+            .orElseThrow(() -> new ResourceNotFoundException("Chunk not found with id: " + request.chunkId()));
+
         FileChunkMapEntity item = new FileChunkMapEntity();
-        item.setVersionId(request.versionId());
-        item.setChunkId(request.chunkId());
+        item.setFileVersion(fileVersion);
+        item.setChunk(chunk);
         item.setOrderIndex(request.orderIndex());
+        item.setStatus("PENDING");
 
         FileChunkMapEntity saved = repository.save(item);
         return toFileChunkMapResponse(saved);
@@ -51,8 +70,13 @@ public class FileChunkMapServiceImpl extends BaseServiceImpl<FileChunkMapEntity,
         FileChunkMapEntity existing = repository.findById(fileChunkMapId)
                 .orElseThrow(() -> new ResourceNotFoundException("FileChunkMap not found with id: " + fileChunkMapId));
 
-        existing.setVersionId(request.versionId());
-        existing.setChunkId(request.chunkId());
+        FileVersionEntity fileVersion = fileVersionRepository.findById(request.versionId())
+            .orElseThrow(() -> new ResourceNotFoundException("FileVersion not found with id: " + request.versionId()));
+        ChunkEntity chunk = chunkRepository.findById(request.chunkId())
+            .orElseThrow(() -> new ResourceNotFoundException("Chunk not found with id: " + request.chunkId()));
+
+        existing.setFileVersion(fileVersion);
+        existing.setChunk(chunk);
         existing.setOrderIndex(request.orderIndex());
 
         FileChunkMapEntity updated = repository.save(existing);
@@ -71,8 +95,8 @@ public class FileChunkMapServiceImpl extends BaseServiceImpl<FileChunkMapEntity,
     private FileChunkMapResponse toFileChunkMapResponse(FileChunkMapEntity item) {
         return new FileChunkMapResponse(
                 item.getId(),
-                item.getVersionId(),
-                item.getChunkId(),
+                item.getFileVersion() != null ? item.getFileVersion().getId() : null,
+                item.getChunk() != null ? item.getChunk().getId() : null,
                 item.getOrderIndex(),
                 item.getCreatedAt(),
                 item.getUpdatedAt()
