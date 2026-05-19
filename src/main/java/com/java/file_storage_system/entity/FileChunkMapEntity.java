@@ -2,23 +2,33 @@ package com.java.file_storage_system.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Entity
-@Table(name = "fileChunkMap")
-public class FileChunkMapEntity extends BaseEntity{
+@Table(name = "fileChunkMap", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"file_version_id", "order_index"})
+})
+public class FileChunkMapEntity extends BaseEntity {
 
-    @Column(name = "versionId", nullable = false, comment = "ID of the file version this chunk belongs to", columnDefinition = "INT DEFAULT 1")
-    private Integer versionId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "file_version_id", nullable = false)
+    private FileVersionEntity fileVersion;
 
-    @Column(name = "chunkId", nullable = false, comment = "ID of the chunk that belongs to the file version")
-    private Integer chunkId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "chunk_id", nullable = false)
+    private ChunkEntity chunk;
 
-    @Column(name = "orderIndex", nullable = false, comment = "Order of the chunk in the file for reconstruction")
-    private Integer orderIndex; // To maintain the order of chunks for reconstructing the file
+    @Column(name = "order_index", nullable = false)
+    private Integer orderIndex;
 
+    @Column(name = "status", nullable = false)
+    private String status; // PENDING, UPLOADED, CONFIRMED
 }

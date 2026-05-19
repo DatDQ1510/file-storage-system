@@ -28,6 +28,9 @@ public class FolderEntity extends BaseEntity{
     @Column(name = "path", nullable = false, columnDefinition = "varchar(255) default '/'")
     private String path;
 
+    @Column(name = "deletedAt")
+    private java.time.LocalDateTime deletedAt;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tenantId", nullable = false)
     @ToString.Exclude

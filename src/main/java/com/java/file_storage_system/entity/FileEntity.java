@@ -18,6 +18,7 @@ import lombok.ToString;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,18 +31,21 @@ public class FileEntity extends BaseEntity {
     @Column(name = "nameFile", nullable = false)
     private String nameFile;
 
-        @Enumerated(EnumType.STRING)
-        @Column(name = "status", nullable = false,
-            comment = "DRAFT, PENDING_REVIEW, APPROVED, REJECTED, DELETED"
-        )
-        private FileStatus statusFile;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false,
+        comment = "DRAFT, PENDING_REVIEW, APPROVED, REJECTED, DELETED"
+    )
+    private FileStatus statusFile;
 
     @Column(name = "sizeFile", nullable = false, comment = "Size of the file in MB")
     private Double sizeFile; // in MB
 
     @Column(name = "typeFile", columnDefinition = "jsonb")
     @JdbcTypeCode(SqlTypes.JSON)
-    private JsonNode ExtraInfo;
+    private java.util.Map<String, Object> extraInfo;
+
+    @Column(name = "deletedAt")
+    private LocalDateTime deletedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tenantId", nullable = false)

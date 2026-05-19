@@ -29,13 +29,13 @@ import java.util.UUID;
 public class FileShareEntity extends BaseEntity {
 
     @Column(name = "fileId", nullable = false)
-    private UUID fileId;
+    private String fileId;
 
     @Column(name = "sharedWithUserId", nullable = false)
-    private UUID sharedWithUserId;
+    private String sharedWithUserId;
 
     @Column(name = "sharedByUserId", nullable = false)
-    private UUID sharedByUserId;
+    private String sharedByUserId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "permission", nullable = false)
