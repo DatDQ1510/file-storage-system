@@ -12,7 +12,7 @@ public record FileResponse(
         String nameFile,
         FileStatus statusFile,
         Double sizeFile,
-        JsonNode extraInfo,
+        java.util.Map<String, Object> extraInfo,
         String tenantId,
         String folderId,
         String ownerId,
