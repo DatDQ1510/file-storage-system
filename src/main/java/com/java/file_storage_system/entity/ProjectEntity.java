@@ -28,7 +28,7 @@ public class ProjectEntity extends BaseEntity {
     private String nameProject;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, columnDefinition = "VARCHAR(50) DEFAULT 'ACTIVE'")
+    @Column(name = "status", nullable = false)
     private ProjectStatus status;
 
     @ManyToOne(fetch = FetchType.LAZY)
