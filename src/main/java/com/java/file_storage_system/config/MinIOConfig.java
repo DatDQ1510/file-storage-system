@@ -1,26 +1,42 @@
 package com.java.file_storage_system.config;
 
 import io.minio.MinioClient;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
+import okhttp3.ConnectionPool;
+import okhttp3.OkHttpClient;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.concurrent.TimeUnit;
+
 @Configuration
+@RequiredArgsConstructor
 public class MinIOConfig {
-    @Value("${minio.endpoint}")
-    private String endpoint;
 
-    @Value("${minio.access-key}")
-    private String accessKey;
-
-    @Value("${minio.secret-key}")
-    private String secretKey;
+    private final MinioProperties minioProperties;
 
     @Bean
-    public MinioClient minioClient() {
+    public OkHttpClient minioOkHttpClient() {
+        return new OkHttpClient.Builder()
+                .connectTimeout(minioProperties.getConnectTimeoutSeconds(), TimeUnit.SECONDS)
+                .readTimeout(minioProperties.getReadTimeoutSeconds(), TimeUnit.SECONDS)
+                .writeTimeout(minioProperties.getWriteTimeoutSeconds(), TimeUnit.SECONDS)
+                .callTimeout(minioProperties.getCallTimeoutSeconds(), TimeUnit.SECONDS)
+                .connectionPool(new ConnectionPool(
+                        minioProperties.getMaxIdleConnections(),
+                        minioProperties.getKeepAliveMinutes(),
+                        TimeUnit.MINUTES
+                ))
+                .retryOnConnectionFailure(true)
+                .build();
+    }
+
+    @Bean
+    public MinioClient minioClient(OkHttpClient minioOkHttpClient) {
         return MinioClient.builder()
-                .endpoint(endpoint)
-                .credentials(accessKey, secretKey)
+                .endpoint(minioProperties.getEndpoint())
+                .credentials(minioProperties.getAccessKey(), minioProperties.getSecretKey())
+                .httpClient(minioOkHttpClient)
                 .build();
     }
 }
