@@ -1,6 +1,7 @@
 package com.java.file_storage_system.service.impl;
 
 import com.java.file_storage_system.constant.MessageConstants;
+import com.java.file_storage_system.context.UserContext;
 import com.java.file_storage_system.dto.file.CreateFileRequest;
 import com.java.file_storage_system.dto.file.FileResponse;
 import com.java.file_storage_system.dto.file.UpdateFileRequest;
@@ -8,19 +9,24 @@ import com.java.file_storage_system.entity.FileEntity;
 import com.java.file_storage_system.entity.FolderEntity;
 import com.java.file_storage_system.entity.TenantEntity;
 import com.java.file_storage_system.entity.UserEntity;
+import com.java.file_storage_system.entity.UserProjectEntity;
 import com.java.file_storage_system.exception.ConflictException;
 import com.java.file_storage_system.exception.ForbiddenException;
 import com.java.file_storage_system.exception.ResourceNotFoundException;
 import com.java.file_storage_system.repository.FileRepository;
+import com.java.file_storage_system.repository.FileShareRepository;
 import com.java.file_storage_system.repository.FolderRepository;
 import com.java.file_storage_system.repository.TenantRepository;
+import com.java.file_storage_system.repository.UserProjectRepository;
 import com.java.file_storage_system.repository.UserRepository;
 import com.java.file_storage_system.service.FileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -29,10 +35,18 @@ public class FileServiceImpl extends BaseServiceImpl<FileEntity, FileRepository>
     private final TenantRepository tenantRepository;
     private final FolderRepository folderRepository;
     private final UserRepository userRepository;
+    private final FileShareRepository fileShareRepository;
+    private final UserProjectRepository userProjectRepository;
+    private final UserContext userContext;
 
     @Override
     @Transactional(readOnly = true)
     public List<FileResponse> getAllFiles() {
+        // Aspect sẽ check READ permission trước khi method được gọi
+        // Nếu user không có quyền → ForbiddenException throw ra
+        // Nên ở đây chỉ cần return accessible files
+        // Tuy nhiên, hiện tại chưa có cách để biết user vừa được check → return all
+        // TODO: Implement sophisticated filtering khi cần (query files by user's accessible folders/projects/fileshare)
         return repository.findAll().stream().map(this::mapToResponse).toList();
     }
 
@@ -160,5 +174,152 @@ public class FileServiceImpl extends BaseServiceImpl<FileEntity, FileRepository>
                 file.getCreatedAt(),
                 file.getUpdatedAt()
         );
+    }
+
+    /**
+     * Helper: Lấy effective permission của user cho file.
+     * 1. Check FileShare (valid & not expired)
+     * 2. Fallback folder ACL
+     * 3. Fallback project membership
+     * Trả về bitmask permission (1=READ, 2=WRITE, 4=DELETE) hoặc null
+     */
+    public Integer resolveEffectiveFilePermission(String fileId, String userId) {
+        FileEntity file = findFile(fileId);
+        FolderEntity folder = file.getFolder();
+        UUID fileUuid = UUID.fromString(fileId);
+        UUID userUuid = UUID.fromString(userId);
+
+        // 1. Check FileShare first
+        var fileShareOpt = fileShareRepository.findValidFileShare(
+                fileUuid,
+                userUuid,
+                LocalDateTime.now()
+        );
+
+        if (fileShareOpt.isPresent()) {
+            var fileShare = fileShareOpt.get();
+            return mapFileSharePermissionToBit(fileShare.getPermission());
+        }
+
+        // 2. Fallback to folder ACL
+        var folderAclOpt = folderRepository.findFolderAclPermission(folder.getId(), userId);
+        if (folderAclOpt.isPresent()) {
+            return folderAclOpt.get();
+        }
+
+        // 3. Fallback to project membership
+        return userProjectRepository.findByUserIdAndProjectId(userId, folder.getProject().getId())
+                .map(UserProjectEntity::getPermission)
+                .orElse(null);
+    }
+
+    /**
+     * Map FileSharePermission enum → bitmask bit
+     * VIEW (1) + COMMENT (1) → READ
+     * EDIT (3) → READ + WRITE
+     */
+    private int mapFileSharePermissionToBit(com.java.file_storage_system.constant.FileSharePermission permission) {
+        return switch (permission) {
+            case VIEW -> 1;      // READ only
+            case COMMENT -> 1;   // READ only (has comment action)
+            case EDIT -> 3;      // READ + WRITE (no DELETE)
+        };
+    }
+
+    /**
+     * Check nếu user có access READ quyền trên file
+     */
+    public boolean canUserReadFile(String fileId, String userId) {
+        try {
+            FileEntity file = findFile(fileId);
+
+            // File owner luôn có quyền
+            if (file.getOwner().getId().equals(userId)) {
+                return true;
+            }
+
+            // Project owner luôn có quyền
+            if (file.getFolder().getProject().getOwner().getId().equals(userId)) {
+                return true;
+            }
+
+            // Check effective permission
+            Integer permission = resolveEffectiveFilePermission(fileId, userId);
+            return permission != null && (permission & 1) != 0;  // 1 = READ bit
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Check nếu user có WRITE quyền + file không bị lock bởi user khác
+     */
+    public boolean canUserEditFile(String fileId, String userId) {
+        try {
+            FileEntity file = findFile(fileId);
+
+            // File owner có quyền (nếu không bị lock bởi người khác)
+            if (file.getOwner().getId().equals(userId)) {
+                if (file.getLockedByUser() != null && !file.getLockedByUser().getId().equals(userId)) {
+                    return false;
+                }
+                return true;
+            }
+
+            // Project owner có quyền (nếu không bị lock bởi người khác)
+            if (file.getFolder().getProject().getOwner().getId().equals(userId)) {
+                if (file.getLockedByUser() != null && !file.getLockedByUser().getId().equals(userId)) {
+                    return false;
+                }
+                return true;
+            }
+
+            // Check file lock
+            if (file.getLockedByUser() != null && !file.getLockedByUser().getId().equals(userId)) {
+                return false;
+            }
+
+            // Check WRITE permission (bit 2)
+            Integer permission = resolveEffectiveFilePermission(fileId, userId);
+            return permission != null && (permission & 2) != 0;  // 2 = WRITE bit
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Check nếu user có DELETE quyền trên file
+     */
+    public boolean canUserDeleteFile(String fileId, String userId) {
+        try {
+            FileEntity file = findFile(fileId);
+
+            // File owner có quyền xoá (nếu không bị lock bởi người khác)
+            if (file.getOwner().getId().equals(userId)) {
+                if (file.getLockedByUser() != null && !file.getLockedByUser().getId().equals(userId)) {
+                    return false;
+                }
+                return true;
+            }
+
+            // Project owner có quyền xoá (nếu không bị lock bởi người khác)
+            if (file.getFolder().getProject().getOwner().getId().equals(userId)) {
+                if (file.getLockedByUser() != null && !file.getLockedByUser().getId().equals(userId)) {
+                    return false;
+                }
+                return true;
+            }
+
+            // Check file lock
+            if (file.getLockedByUser() != null && !file.getLockedByUser().getId().equals(userId)) {
+                return false;
+            }
+
+            // Check DELETE permission (bit 4)
+            Integer permission = resolveEffectiveFilePermission(fileId, userId);
+            return permission != null && (permission & 4) != 0;  // 4 = DELETE bit
+        } catch (Exception e) {
+            return false;
+        }
     }
 }
