@@ -9,6 +9,7 @@ import com.java.file_storage_system.dto.folder.FolderResponse;
 import com.java.file_storage_system.dto.folder.RenameFolderRequest;
 import com.java.file_storage_system.dto.folder.UpsertFolderAclRequest;
 import com.java.file_storage_system.payload.ApiResponse;
+import com.java.file_storage_system.service.StarService;
 import com.java.file_storage_system.service.FolderService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -36,6 +37,7 @@ import java.util.List;
 public class FolderController {
 
     private final FolderService folderService;
+    private final StarService starService;
     private final UserContext userContext;
 
     // ─── Single folder ────────────────────────────────────────────────────────
@@ -134,6 +136,28 @@ public class FolderController {
         return ResponseEntity.ok(
                 ApiResponse.success("Delete folder successfully", httpServletRequest.getRequestURI())
         );
+    }
+
+    @PostMapping("/{folderId}/star")
+    @RequireRole({UserRole.TENANT_ADMIN, UserRole.USER})
+    @RequireFolderPermission(RequireFolderPermission.FolderAction.READ)
+    public ResponseEntity<ApiResponse<com.java.file_storage_system.dto.starred.StarredFolderResponse>> starFolder(
+            @PathVariable("folderId") String folderId,
+            HttpServletRequest httpServletRequest
+    ) {
+        var response = starService.starFolder(folderId, userContext.getId(), userContext.getTenantId());
+        return ResponseEntity.ok(ApiResponse.success("Star folder successfully", response, httpServletRequest.getRequestURI()));
+    }
+
+    @DeleteMapping("/{folderId}/star")
+    @RequireRole({UserRole.TENANT_ADMIN, UserRole.USER})
+    @RequireFolderPermission(RequireFolderPermission.FolderAction.READ)
+    public ResponseEntity<ApiResponse<String>> unstarFolder(
+            @PathVariable("folderId") String folderId,
+            HttpServletRequest httpServletRequest
+    ) {
+        starService.unstarFolder(folderId, userContext.getId());
+        return ResponseEntity.ok(ApiResponse.success("Unstar folder successfully", httpServletRequest.getRequestURI()));
     }
 
     // ─── ACL ──────────────────────────────────────────────────────────────────

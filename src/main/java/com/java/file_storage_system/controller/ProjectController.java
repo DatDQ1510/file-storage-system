@@ -122,6 +122,7 @@ public class ProjectController {
 
     @GetMapping("/{projectId}/members")
     @RequireRole({UserRole.TENANT_ADMIN, UserRole.USER})
+    @RequireFolderPermission(RequireFolderPermission.FolderAction.READ)
     public ResponseEntity<ApiResponse<List<ProjectMemberResponse>>> getProjectMembers(
             @PathVariable("projectId") String projectId,
             HttpServletRequest httpServletRequest
@@ -183,8 +184,8 @@ public class ProjectController {
     }
 
     @PatchMapping("/{projectId}")
-    @RequireRole(UserRole.TENANT_ADMIN)
-//    @RequirePermission(RequirePermission.Permission.WRITE)
+    @RequireRole(UserRole.USER)
+    @RequirePermission(RequirePermission.Permission.MANAGE_MEMBER)
     public ResponseEntity<ApiResponse<ProjectResponse>> updateProject(
             @PathVariable("projectId") String projectId,
             @Valid @RequestBody UpdateProjectRequest request,
@@ -204,8 +205,8 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{projectId}")
-    @RequireRole(UserRole.TENANT_ADMIN)
-//    @RequirePermission(RequirePermission.Permission.DELETE)
+    @RequireRole(UserRole.USER)
+    @RequirePermission(RequirePermission.Permission.MANAGE_MEMBER)
     public ResponseEntity<ApiResponse<String>> deleteProject(
             @PathVariable("projectId") String projectId,
             HttpServletRequest httpServletRequest
@@ -223,6 +224,8 @@ public class ProjectController {
     }
 
     @GetMapping("/{projectId}")
+    @RequireRole({UserRole.TENANT_ADMIN, UserRole.USER})
+    @RequireFolderPermission(RequireFolderPermission.FolderAction.READ)
     public ResponseEntity<ApiResponse<ProjectResponse>> getProjectById(
             @PathVariable("projectId") String projectId,
             HttpServletRequest httpServletRequest
@@ -277,7 +280,7 @@ public class ProjectController {
      */
     @GetMapping("/{projectId}/folders")
     @RequireRole({UserRole.TENANT_ADMIN, UserRole.USER})
-//    @RequireFolderPermission(RequireFolderPermission.FolderAction.READ)
+    @RequireFolderPermission(RequireFolderPermission.FolderAction.READ)
     public ResponseEntity<ApiResponse<List<FolderResponse>>> getProjectFolders(
             @PathVariable("projectId") String projectId,
             HttpServletRequest httpServletRequest
@@ -300,7 +303,7 @@ public class ProjectController {
      */
     @GetMapping("/{projectId}/folders/children")
     @RequireRole({UserRole.TENANT_ADMIN, UserRole.USER})
-//    @RequireFolderPermission(RequireFolderPermission.FolderAction.READ)
+    @RequireFolderPermission(RequireFolderPermission.FolderAction.READ)
     public ResponseEntity<ApiResponse<List<FolderPathNodeResponse>>> getChildFolderPaths(
             @PathVariable("projectId") String projectId,
             @RequestParam(value = "parentPath", defaultValue = "/") String parentPath,
@@ -324,7 +327,7 @@ public class ProjectController {
      */
     @GetMapping("/{projectId}/folders/search")
     @RequireRole({UserRole.TENANT_ADMIN, UserRole.USER})
-//    @RequireFolderPermission(RequireFolderPermission.FolderAction.READ)
+    @RequireFolderPermission(RequireFolderPermission.FolderAction.READ)
     public ResponseEntity<ApiResponse<List<FolderPathNodeResponse>>> searchFolders(
             @PathVariable("projectId") String projectId,
             @RequestParam("keyword") String keyword,
@@ -349,6 +352,7 @@ public class ProjectController {
      */
     @GetMapping("/{projectId}/members-for-acl")
     @RequireRole({UserRole.TENANT_ADMIN, UserRole.USER})
+    @RequireFolderPermission(RequireFolderPermission.FolderAction.READ)
     public ResponseEntity<ApiResponse<List<ProjectMemberForAclResponse>>> getProjectMembersForAcl(
             @PathVariable("projectId") String projectId,
             HttpServletRequest httpServletRequest

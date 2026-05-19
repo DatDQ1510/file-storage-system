@@ -1,10 +1,15 @@
 package com.java.file_storage_system.controller;
 
 import com.java.file_storage_system.dto.chunk.ChunkResponse;
+import com.java.file_storage_system.dto.chunk.ChunkPreSignBatchRequest;
+import com.java.file_storage_system.dto.chunk.ChunkPreSignBatchResponse;
 import com.java.file_storage_system.dto.chunk.CreateChunkRequest;
+import com.java.file_storage_system.dto.chunk.FileUploadFinalizeRequest;
+import com.java.file_storage_system.dto.chunk.FileUploadFinalizeResponse;
 import com.java.file_storage_system.dto.chunk.UpdateChunkRequest;
 import com.java.file_storage_system.payload.ApiResponse;
 import com.java.file_storage_system.service.ChunkService;
+import com.java.file_storage_system.service.FileUploadCoordinator;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
@@ -27,6 +32,7 @@ import java.util.List;
 public class ChunkController {
 
     private final ChunkService chunkService;
+    private final FileUploadCoordinator fileUploadCoordinator;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<ChunkResponse>>> getAllChunks(HttpServletRequest httpServletRequest) {
@@ -70,5 +76,23 @@ public class ChunkController {
     ) {
         chunkService.deleteChunk(chunkId);
         return ResponseEntity.ok(ApiResponse.success("Delete chunk successfully", httpServletRequest.getRequestURI()));
+    }
+
+    @PostMapping("/pre-sign-batch")
+    public ResponseEntity<ApiResponse<ChunkPreSignBatchResponse>> preSignBatch(
+            @Valid @RequestBody ChunkPreSignBatchRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        ChunkPreSignBatchResponse response = fileUploadCoordinator.preSignBatch(request);
+        return ResponseEntity.ok(ApiResponse.success("Chunk pre-sign batch processed successfully", response, httpServletRequest.getRequestURI()));
+    }
+
+    @PostMapping("/finalize-file-upload")
+    public ResponseEntity<ApiResponse<FileUploadFinalizeResponse>> finalizeFileUpload(
+            @Valid @RequestBody FileUploadFinalizeRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        FileUploadFinalizeResponse response = fileUploadCoordinator.finalizeFileUpload(request);
+        return ResponseEntity.ok(ApiResponse.success("File upload finalized successfully", response, httpServletRequest.getRequestURI()));
     }
 }
