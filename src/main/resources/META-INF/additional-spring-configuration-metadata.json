@@ -43,6 +43,36 @@
       "description": "Use secure MinIO connection (TLS)."
     },
     {
+      "name": "minio.connect-timeout-seconds",
+      "type": "java.lang.Integer",
+      "description": "Connect timeout for MinIO HTTP client in seconds."
+    },
+    {
+      "name": "minio.read-timeout-seconds",
+      "type": "java.lang.Integer",
+      "description": "Read timeout for MinIO HTTP client in seconds."
+    },
+    {
+      "name": "minio.write-timeout-seconds",
+      "type": "java.lang.Integer",
+      "description": "Write timeout for MinIO HTTP client in seconds."
+    },
+    {
+      "name": "minio.call-timeout-seconds",
+      "type": "java.lang.Integer",
+      "description": "Overall call timeout for MinIO HTTP client in seconds."
+    },
+    {
+      "name": "minio.max-idle-connections",
+      "type": "java.lang.Integer",
+      "description": "Maximum number of idle HTTP connections kept in MinIO pool."
+    },
+    {
+      "name": "minio.keep-alive-minutes",
+      "type": "java.lang.Integer",
+      "description": "Keep-alive duration for idle MinIO HTTP connections in minutes."
+    },
+    {
       "name": "app.security.system-admin-bootstrap-secret",
       "type": "java.lang.String",
       "description": "Bootstrap secret for creating initial system admin."
