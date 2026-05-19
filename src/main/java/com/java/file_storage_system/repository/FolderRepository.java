@@ -11,13 +11,13 @@ import java.util.Optional;
 @Repository
 public interface FolderRepository extends BaseRepository<FolderEntity> {
 
-    @Query("select f from FolderEntity f where f.project.id = :projectId order by f.updatedAt desc")
+    @Query("select f from FolderEntity f where f.project.id = :projectId and f.deletedAt is null order by f.updatedAt desc")
     List<FolderEntity> findAllByProjectId(@Param("projectId") String projectId);
 
-    @Query("select f from FolderEntity f where f.project.id = :projectId and f.path = :path")
+    @Query("select f from FolderEntity f where f.project.id = :projectId and f.path = :path and f.deletedAt is null")
     Optional<FolderEntity> findByProjectIdAndPath(@Param("projectId") String projectId, @Param("path") String path);
 
-    @Query("select (count(f) > 0) from FolderEntity f where f.project.id = :projectId and f.path = :path")
+    @Query("select (count(f) > 0) from FolderEntity f where f.project.id = :projectId and f.path = :path and f.deletedAt is null")
     boolean existsByProjectIdAndPath(@Param("projectId") String projectId, @Param("path") String path);
 
     @Query("""
@@ -25,6 +25,7 @@ public interface FolderRepository extends BaseRepository<FolderEntity> {
             from FolderEntity f
             where f.project.id = :projectId
             and lower(f.path) like lower(concat('%', :keyword, '%'))
+            and f.deletedAt is null
             order by f.path asc
             """)
     List<FolderEntity> searchByProjectIdAndPathKeyword(
@@ -42,7 +43,7 @@ public interface FolderRepository extends BaseRepository<FolderEntity> {
     /**
      * Lấy các folder con trực tiếp (direct children) theo parentId.
      */
-    @Query("select f from FolderEntity f where f.project.id = :projectId and f.parentFolder.id = :parentFolderId order by f.nameFolder asc")
+    @Query("select f from FolderEntity f where f.project.id = :projectId and f.parentFolder.id = :parentFolderId and f.deletedAt is null order by f.nameFolder asc")
     List<FolderEntity> findAllByProjectIdAndParentFolderId(
             @Param("projectId") String projectId,
             @Param("parentFolderId") String parentFolderId
@@ -51,7 +52,7 @@ public interface FolderRepository extends BaseRepository<FolderEntity> {
     /**
      * Lấy các folder ở root (parentFolder IS NULL).
      */
-    @Query("select f from FolderEntity f where f.project.id = :projectId and f.parentFolder is null order by f.nameFolder asc")
+    @Query("select f from FolderEntity f where f.project.id = :projectId and f.parentFolder is null and f.deletedAt is null order by f.nameFolder asc")
     List<FolderEntity> findAllRootFoldersByProjectId(@Param("projectId") String projectId);
 }
 
